@@ -1,0 +1,1966 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Bills Tracker</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #0f1117; color: #e2e8f0; min-height: 100vh; }
+
+    header { background: #1a1d27; border-bottom: 1px solid #2d3148; padding: 14px 28px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px; }
+    header h1 { font-size: 18px; font-weight: 600; color: #fff; }
+    .nav-link { background: #252837; border: 1px solid #2d3148; color: #94a3b8; padding: 7px 14px; border-radius: 8px; font-size: 13px; cursor: pointer; text-decoration: none; transition: all .15s; }
+    .nav-link:hover { background: #2d3148; color: #fff; }
+    .nav-link.active { background: #5865f2; border-color: #5865f2; color: #fff; }
+
+    main { max-width: 1400px; margin: 0 auto; padding: 24px 28px; }
+
+    /* Summary cards */
+    .sum-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px,1fr)); gap: 12px; margin-bottom: 24px; }
+    .sum-card { background: #1a1d27; border: 1px solid #2d3148; border-radius: 10px; padding: 14px 16px; }
+    .sum-card .l { font-size: 10px; color: #64748b; text-transform: uppercase; letter-spacing:.05em; margin-bottom: 4px; }
+    .sum-card .v { font-size: 19px; font-weight: 700; }
+    .sum-card .s { font-size: 11px; color: #64748b; margin-top: 3px; }
+    .red{color:#f87171}.green{color:#4ade80}.blue{color:#818cf8}.yellow{color:#facc15}.orange{color:#fb923c}.cyan{color:#22d3ee}
+
+    /* Page tabs */
+    .page-tabs { display: flex; gap: 4px; margin-bottom: 24px; border-bottom: 1px solid #2d3148; padding-bottom: 0; flex-wrap: wrap; }
+    .page-tab { background: none; border: none; color: #64748b; padding: 9px 16px; font-size: 13px; cursor: pointer; border-bottom: 2px solid transparent; margin-bottom: -1px; transition: all .15s; white-space: nowrap; }
+    .page-tab:hover { color: #e2e8f0; }
+    .page-tab.active { color: #fff; border-bottom-color: #5865f2; }
+    .tab-content { display: none; }
+    .tab-content.active { display: block; }
+
+    /* Section */
+    .section { background: #1a1d27; border: 1px solid #2d3148; border-radius: 12px; padding: 20px 22px; margin-bottom: 20px; }
+    .sec-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; flex-wrap: wrap; gap: 8px; }
+    .sec-head h2 { font-size: 13px; font-weight: 600; color: #e2e8f0; }
+
+    /* Buttons */
+    .btn-add  { background:#5865f2;color:#fff;border:none;padding:6px 14px;border-radius:7px;font-size:12px;cursor:pointer; }
+    .btn-add:hover { background:#4752c4; }
+    .btn-sm   { padding:4px 10px;font-size:11px;border:none;border-radius:5px;cursor:pointer; }
+    .btn-edit { background:#1e2235;color:#94a3b8; }
+    .btn-edit:hover { background:#252837;color:#e2e8f0; }
+    .btn-del  { background:#3b1f1f;color:#f87171; }
+    .btn-del:hover { background:#4a2222; }
+    .btn-save { background:#22c55e;color:#fff; }
+    .btn-cancel { background:#1e2235;color:#94a3b8; }
+
+    /* Item row */
+    .item-row { display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid #1e2235; }
+    .item-row:last-child { border-bottom:none; }
+    .item-info { flex:1; }
+    .item-name { font-size:13px;color:#e2e8f0; }
+    .item-sub  { font-size:11px;color:#475569;margin-top:2px; }
+    .item-amount { font-size:14px;font-weight:600;min-width:100px;text-align:right; }
+    .item-actions { display:flex;gap:5px; }
+
+    /* Inline edit */
+    .edit-form { background:#141620;border:1px solid #5865f2;border-radius:8px;padding:14px;margin:6px 0;display:none; }
+    .edit-form.open { display:block; }
+    .form-row { display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end; }
+    .fg { display:flex;flex-direction:column;gap:4px;flex:1;min-width:110px; }
+    .fg label { font-size:10px;color:#64748b;text-transform:uppercase;letter-spacing:.04em; }
+    .fg input, .fg select { background:#1a1d27;border:1px solid #2d3148;color:#e2e8f0;padding:7px 10px;border-radius:6px;font-size:12px;outline:none;width:100%; }
+    .fg input:focus, .fg select:focus { border-color:#5865f2; }
+    .form-actions { display:flex;gap:6px;margin-top:10px; }
+
+    /* Progress bar */
+    .prog { height:3px;background:#1e2235;border-radius:2px;margin-top:6px; }
+    .prog-f { height:3px;border-radius:2px; }
+    .prog-f.red{background:#f87171}.prog-f.orange{background:#fb923c}.prog-f.yellow{background:#facc15}
+
+    /* Category header */
+    .cat-hdr { font-size:10px;color:#64748b;text-transform:uppercase;letter-spacing:.06em;padding:12px 0 5px;border-top:1px solid #1e2235;margin-top:6px;display:flex;justify-content:space-between; }
+    .cat-hdr:first-child { border-top:none;margin-top:0; }
+
+    /* ── Tracker Tables ── */
+    .tracker-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+    .tracker-table { width: 100%; border-collapse: collapse; font-size: 12px; min-width: 900px; }
+    .tracker-table th { padding: 8px 10px; font-size: 10px; color: #64748b; text-transform: uppercase; letter-spacing:.05em; border-bottom: 1px solid #2d3148; text-align: right; white-space: nowrap; }
+    .tracker-table th:first-child { text-align: left; min-width: 170px; }
+    .tracker-table td { padding: 0; border-bottom: 1px solid #141620; vertical-align: middle; }
+    .tracker-table td:first-child { padding: 8px 10px; color: #94a3b8; font-size: 12px; white-space: nowrap; }
+    .tracker-table tr:last-child td { border-bottom: none; }
+    .tracker-table tr.section-total td { background:#1e2235; font-weight:700; }
+    .tracker-table tr.section-total td:first-child { color:#e2e8f0; }
+    .tracker-table tr.section-header td { background:#141e2e; color:#5865f2; font-size:11px; font-weight:600; letter-spacing:.06em; padding:10px 10px; text-transform:uppercase; }
+    .tracker-table tr.row-calc td { background:#101420; }
+    .tracker-table tr.row-calc td:first-child { color:#94a3b8; font-style:italic; font-size:11px; }
+    .tracker-table tr.row-cashflow td { background:#0d1a10; }
+    .tracker-table tr.row-cashflow td:first-child { color:#4ade80; font-weight:600; }
+
+    /* Cell input */
+    .cell-wrap { position: relative; }
+    .cell-display { padding: 7px 10px; text-align: right; color: #e2e8f0; cursor: pointer; min-width: 80px; transition: background .1s; white-space: nowrap; }
+    .cell-display:hover { background: #1e2235; }
+    .cell-display.zero { color: #2d3148; }
+    .cell-display.positive { color: #4ade80; }
+    .cell-display.negative { color: #f87171; }
+    .cell-display.orange-v { color: #fb923c; }
+    .cell-display.blue-v   { color: #818cf8; }
+    .cell-display.red-v    { color: #f87171; }
+    .cell-input { width: 80px; background: #0f1117; border: 1px solid #5865f2; color: #fff; padding: 5px 8px; font-size: 12px; text-align: right; outline: none; border-radius: 4px; display: none; }
+    .cell-wrap.editing .cell-display { display: none; }
+    .cell-wrap.editing .cell-input { display: block; }
+
+    /* Year selector */
+    .year-tabs { display:flex;gap:6px;margin-bottom:16px; }
+    .year-tab { background:#1e2235;border:1px solid #2d3148;color:#94a3b8;padding:5px 14px;border-radius:6px;font-size:12px;cursor:pointer; }
+    .year-tab.active { background:#5865f2;border-color:#5865f2;color:#fff; }
+
+    /* Investment Goal */
+    .goal-widget { background:#141e2e;border:1px solid #2d3148;border-radius:10px;padding:16px 20px;margin-bottom:16px; }
+    .goal-widget h3 { font-size:12px;color:#818cf8;margin-bottom:10px;text-transform:uppercase;letter-spacing:.05em; }
+    .goal-bar-bg { height:8px;background:#1e2235;border-radius:4px;overflow:hidden;margin:8px 0; }
+    .goal-bar-fill { height:8px;border-radius:4px;background:linear-gradient(90deg,#5865f2,#818cf8);transition:width .5s; }
+    .goal-meta { display:flex;justify-content:space-between;font-size:11px;color:#64748b; }
+    .goal-amount { font-size:20px;font-weight:700;color:#818cf8; }
+    .goal-target { font-size:11px;color:#475569;margin-top:2px; }
+
+    /* Dividend grid */
+    .month-grid { display:grid;grid-template-columns:repeat(4,1fr);gap:8px; }
+    @media(max-width:600px){.month-grid{grid-template-columns:repeat(2,1fr);}}
+    .month-cell { background:#141620;border:1px solid #2d3148;border-radius:8px;padding:10px; }
+    .month-cell .mc-m { font-size:10px;color:#64748b;text-transform:uppercase;letter-spacing:.05em;margin-bottom:3px; }
+    .month-cell .mc-v { font-size:15px;font-weight:600;color:#4ade80;cursor:pointer; }
+    .month-cell .mc-v:hover { color:#86efac; }
+    .month-cell .mc-v.zero { color:#2d3148; }
+    .month-cell input { background:#1a1d27;border:1px solid #5865f2;color:#e2e8f0;padding:5px 8px;border-radius:5px;font-size:13px;width:100%;outline:none;display:none; }
+    .month-cell.editing .mc-v { display:none; }
+    .month-cell.editing input { display:block; }
+
+    .chart-wrap { position:relative;height:200px; }
+    .chart-wrap-lg { position:relative;height:260px; }
+
+    /* Annual Summary Table */
+    .ann-table { width:100%;border-collapse:collapse;font-size:13px; }
+    .ann-table th { padding:10px 14px;font-size:10px;color:#64748b;text-transform:uppercase;letter-spacing:.05em;border-bottom:1px solid #2d3148;text-align:right; }
+    .ann-table th:first-child { text-align:left; }
+    .ann-table td { padding:0;border-bottom:1px solid #141620; }
+    .ann-table td:first-child { padding:10px 14px;color:#e2e8f0;font-weight:600; }
+    .ann-table tr:last-child td { border-bottom:none; }
+    .ann-table tr.ann-current td { background:#141e2e; }
+    .ann-table .ann-cell { padding:10px 14px;text-align:right;cursor:pointer;transition:background .1s;white-space:nowrap; }
+    .ann-table .ann-cell:hover { background:#1e2235; }
+    .ann-table .ann-cell.editing { padding:4px 6px; }
+    .ann-table .ann-cell input { background:#0f1117;border:1px solid #5865f2;color:#e2e8f0;padding:5px 8px;border-radius:4px;font-size:12px;text-align:right;outline:none;width:90px; }
+
+    /* Two-col charts layout */
+    .chart-row { display:grid;grid-template-columns:1fr 1fr;gap:16px; }
+    @media(max-width:800px){ .chart-row { grid-template-columns:1fr; } }
+
+    /* Save bar */
+    #save-bar { position:fixed;bottom:0;left:0;right:0;background:#1a1d27;border-top:1px solid #2d3148;padding:12px 28px;display:flex;align-items:center;justify-content:space-between;z-index:50;transform:translateY(100%);transition:transform .25s; }
+    #save-bar.visible { transform:translateY(0); }
+    #save-bar p { font-size:13px;color:#94a3b8; }
+    .bar-btns { display:flex;gap:8px; }
+
+    .toast { position:fixed;top:20px;right:20px;background:#22c55e;color:#fff;padding:10px 18px;border-radius:8px;font-size:13px;z-index:200;opacity:0;transform:translateY(-8px);transition:all .3s;pointer-events:none; }
+    .toast.show { opacity:1;transform:translateY(0); }
+
+    /* ── Payoff Projections ── */
+    .payoff-grid { display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:14px;margin-top:4px; }
+    .payoff-card { background:#12151e;border:1px solid #2d3148;border-radius:10px;padding:16px 18px; }
+    .payoff-card.fixed-loan { border-color:#1e3a2f; }
+    .payoff-card-title { font-size:13px;font-weight:600;color:#e2e8f0;margin-bottom:12px;display:flex;align-items:center;gap:6px; }
+    .payoff-cat-dot { width:8px;height:8px;border-radius:50%;flex-shrink:0; }
+    .payoff-row { display:flex;justify-content:space-between;align-items:center;font-size:12px;margin-bottom:7px; }
+    .payoff-lbl { color:#64748b; }
+    .payoff-val { color:#e2e8f0;font-weight:600; }
+    .payoff-input { background:#1a1d27;border:1px solid #2d3148;color:#e2e8f0;padding:4px 8px;border-radius:5px;font-size:12px;width:90px;text-align:right;outline:none; }
+    .payoff-input:focus { border-color:#5865f2; }
+    .payoff-date-row { display:flex;justify-content:space-between;align-items:center;margin:10px 0 6px;padding-top:10px;border-top:1px solid #1e2235; }
+    .payoff-date-lbl { font-size:11px;color:#64748b;text-transform:uppercase;letter-spacing:.04em; }
+    .payoff-date-val { font-size:14px;font-weight:700; }
+    .payoff-bar-bg { height:5px;background:#1e2235;border-radius:99px;margin:6px 0 4px;overflow:hidden; }
+    .payoff-bar-fill { height:5px;border-radius:99px;transition:width .4s; }
+    .payoff-meta { display:flex;justify-content:space-between;font-size:10px;color:#475569;margin-top:2px; }
+    .payoff-summary { display:flex;gap:12px;margin-bottom:20px;flex-wrap:wrap; }
+    .payoff-sum-card { background:#12151e;border:1px solid #2d3148;border-radius:8px;padding:10px 14px;flex:1;min-width:140px; }
+    .payoff-sum-card .ps-l { font-size:10px;color:#64748b;text-transform:uppercase;letter-spacing:.04em;margin-bottom:3px; }
+    .payoff-sum-card .ps-v { font-size:16px;font-weight:700; }
+    .payoff-sub-head { display:flex;align-items:center;justify-content:space-between;margin:18px 0 10px;padding-bottom:8px;border-bottom:1px solid #1e2235; }
+    .payoff-sub-head h3 { font-size:11px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:.07em; }
+    .payoff-sub-head span { font-size:11px;color:#475569; }
+    .payoff-fixed-badge { font-size:9px;background:#1e3a2f;color:#4ade80;border:1px solid #2d5a3d;border-radius:4px;padding:1px 5px;letter-spacing:.04em;margin-left:6px; }
+    .payoff-empty { font-size:12px;color:#475569;font-style:italic;padding:6px 0; }
+
+    /* ── Plan Tab ── */
+    .payday-grid { display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:14px;margin-bottom:4px; }
+    .payday-card { background:#12151e;border:1px solid #2d3148;border-radius:12px;padding:18px 20px; }
+    .payday-card.next-pay { border-color:#4ade8066; }
+    .payday-hdr { display:flex;justify-content:space-between;align-items:center;margin-bottom:10px; }
+    .payday-source { font-size:11px;font-weight:700;color:#818cf8;text-transform:uppercase;letter-spacing:.06em; }
+    .payday-countdown { font-size:10px;color:#4ade80;background:#0d2218;border:1px solid #1a4d2e;border-radius:10px;padding:2px 8px; }
+    .payday-date { font-size:19px;font-weight:700;color:#e2e8f0;margin-bottom:3px; }
+    .payday-gross { font-size:13px;color:#4ade80;font-weight:600;margin-bottom:12px; }
+    .payday-alloc { display:flex;flex-direction:column;gap:4px; }
+    .pa-row { display:flex;justify-content:space-between;font-size:12px;padding:5px 8px;border-radius:5px;background:#1a1d27; }
+    .pa-row .pal { color:#94a3b8; }
+    .pa-row .pav { font-weight:600; }
+    .pa-row.pa-total { background:#141e2e;margin-top:4px; }
+    .pa-row.pa-total .pal { color:#e2e8f0;font-weight:600; }
+    .pa-row.pa-total .pav { color:#4ade80; }
+
+    .sched-wrap { overflow-x:auto; }
+    .sched-table { width:100%;border-collapse:collapse;font-size:12px;min-width:680px; }
+    .sched-table th { padding:8px 12px;font-size:10px;color:#64748b;text-transform:uppercase;letter-spacing:.05em;border-bottom:1px solid #2d3148;text-align:right; }
+    .sched-table th:first-child { text-align:left; }
+    .sched-table td { padding:10px 12px;border-bottom:1px solid #141620;text-align:right;vertical-align:middle; }
+    .sched-table td:first-child { text-align:left; }
+    .sched-table tr:last-child td { border-bottom:none; }
+    .sched-table tr:hover td { background:#141620; }
+    .sched-date { font-weight:600;color:#e2e8f0; }
+    .sched-yr { font-size:10px;color:#475569; }
+    .sched-badge { display:inline-block;font-size:9px;padding:1px 6px;border-radius:3px;margin-top:2px; }
+    .sched-badge.asa { background:#1e2a4a;color:#818cf8; }
+    .sched-badge.kb  { background:#1a3a2e;color:#4ade80; }
+
+    .milestone-row { display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px; }
+    .milestone-chip { background:#12151e;border:1px solid #2d3148;border-radius:8px;padding:10px 14px;flex:1;min-width:130px; }
+    .milestone-chip .mc-l { font-size:10px;color:#64748b;text-transform:uppercase;letter-spacing:.04em;margin-bottom:4px; }
+    .milestone-chip .mc-d { font-size:13px;font-weight:700; }
+    .milestone-chip .mc-n { font-size:10px;color:#475569;margin-top:2px; }
+    .chart-wrap-xl { position:relative;height:300px; }
+
+    .print-btn { background:#1e2235;border:1px solid #2d3148;color:#94a3b8;padding:7px 14px;border-radius:8px;font-size:13px;cursor:pointer;text-decoration:none;transition:all .15s; }
+    .print-btn:hover { background:#2d3148;color:#fff; }
+
+    /* Cloud modal */
+    .cloud-modal-overlay { position:fixed;inset:0;background:rgba(0,0,0,.75);display:none;align-items:center;justify-content:center;z-index:2000; }
+    .cloud-modal-overlay.open { display:flex; }
+    .cloud-modal { background:#1a1d27;border:1px solid #2d3148;border-radius:14px;padding:28px 30px;width:100%;max-width:460px; }
+    .cloud-modal h3 { font-size:15px;font-weight:700;color:#fff;margin-bottom:18px; }
+    .cloud-status { font-size:12px;padding:7px 12px;border-radius:7px;margin-bottom:14px;font-weight:500; }
+    .cloud-status.connected { background:#0d1a10;color:#4ade80;border:1px solid #166534; }
+    .cloud-status.disconnected { background:#1a0f0f;color:#f87171;border:1px solid #7f1d1d; }
+    #cloud-btn.connected { color:#4ade80; }
+
+    /* ── Print / PDF ── */
+    @media print {
+      header .print-btn, #save-bar, .page-tabs, .btn-add, .btn-sm, .btn-edit, .btn-del, #toast,
+      .item-actions, .edit-form, .payoff-sub-head button, .year-tabs { display:none !important; }
+      body { background:#fff;color:#111; }
+      .section { border:1px solid #ccc;break-inside:avoid;background:#fff;margin-bottom:12px; }
+      .tab-content { display:block !important; }
+      .sec-head h2 { color:#111; }
+      .ann-table th, .ann-table td:first-child { color:#111; }
+      canvas { max-width:100%; }
+      a.nav-link { display:none !important; }
+    }
+  </style>
+</head>
+<body>
+
+<div id="toast" class="toast"></div>
+
+<header>
+  <div>
+    <h1>💰 Bills Tracker</h1>
+    <div style="font-size:11px;color:#64748b;margin-top:1px" id="last-saved">Loading…</div>
+  </div>
+  <div style="display:flex;gap:8px;align-items:center">
+    <a href="index.html" class="nav-link">📊 Dashboard</a>
+    <a href="bills.html" class="nav-link active">💳 Bills Tracker</a>
+    <button class="print-btn" onclick="window.print()">🖨️ Print / PDF</button>
+    <button class="print-btn" id="cloud-btn" onclick="showCloudModal()">☁️ Cloud</button>
+  </div>
+</header>
+
+<!-- Cloud Setup Modal -->
+<div id="cloud-modal" class="cloud-modal-overlay" onclick="if(event.target===this)hideCloudModal()">
+  <div class="cloud-modal">
+    <h3>☁️ Cloud Storage (GitHub Gist)</h3>
+    <div id="cloud-status" class="cloud-status disconnected">⚠️ Not connected</div>
+    <div class="fg" style="margin-bottom:12px">
+      <label>GitHub Personal Access Token</label>
+      <input type="password" id="cloud-token" placeholder="ghp_…" autocomplete="off"/>
+    </div>
+    <div class="fg" style="margin-bottom:12px">
+      <label>Gist ID</label>
+      <input type="text" id="cloud-gist" placeholder="e.g. a1b2c3d4e5f67890abcd" autocomplete="off"/>
+    </div>
+    <div style="font-size:11px;color:#475569;margin-bottom:18px;line-height:1.6">
+      Don't have a Gist yet? Run <code style="background:#141620;padding:2px 6px;border-radius:4px;color:#94a3b8">setup_gist.ps1</code> once to create one.
+      Your token needs the <strong style="color:#94a3b8">gist</strong> scope only.
+    </div>
+    <div class="form-actions" style="justify-content:space-between">
+      <div style="display:flex;gap:6px">
+        <button class="btn-sm btn-save" onclick="cloudConnect()">Connect</button>
+        <button class="btn-sm btn-cancel" onclick="hideCloudModal()">Cancel</button>
+      </div>
+      <button class="btn-sm btn-del" onclick="cloudDisconnect()">Disconnect</button>
+    </div>
+  </div>
+</div>
+
+<main>
+  <div class="sum-grid" id="summary"></div>
+
+  <div class="page-tabs">
+    <button class="page-tab active" onclick="switchTab('annual',this)">📊 Annual Summary</button>
+    <button class="page-tab" onclick="switchTab('debt',this)">💳 Debt Balances</button>
+    <button class="page-tab" onclick="switchTab('tracker',this)">📅 Monthly Tracker</button>
+    <button class="page-tab" onclick="switchTab('bills',this)">📋 Fixed Bills</button>
+    <button class="page-tab" onclick="switchTab('income',this)">💵 Income</button>
+    <button class="page-tab" onclick="switchTab('dividends',this)">📈 Dividends</button>
+    <button class="page-tab" onclick="switchTab('plan',this)">🗺️ Plan</button>
+  </div>
+
+  <!-- ── ANNUAL SUMMARY ── -->
+  <div id="tab-annual" class="tab-content active">
+    <div class="section">
+      <div class="sec-head">
+        <h2>Year-Over-Year Summary</h2>
+        <span style="font-size:11px;color:#64748b">Click any cell to edit</span>
+      </div>
+      <div style="overflow-x:auto">
+        <table class="ann-table" id="ann-table"></table>
+      </div>
+    </div>
+    <div class="chart-row">
+      <div class="section">
+        <div class="sec-head"><h2>Income vs Bills Paid</h2></div>
+        <div class="chart-wrap-lg"><canvas id="ann-income-chart"></canvas></div>
+      </div>
+      <div class="section">
+        <div class="sec-head"><h2>Year-End Debt Trend</h2></div>
+        <div class="chart-wrap-lg"><canvas id="ann-debt-chart"></canvas></div>
+      </div>
+    </div>
+    <div class="section">
+      <div class="sec-head"><h2>Dividends by Year</h2></div>
+      <div class="chart-wrap"><canvas id="ann-div-chart"></canvas></div>
+    </div>
+  </div>
+
+  <!-- ── DEBT BALANCES ── -->
+  <div id="tab-debt" class="tab-content">
+    <div class="section">
+      <div class="sec-head">
+        <h2>Current Debt Balances</h2>
+        <button class="btn-add" onclick="addDebt()">+ Add</button>
+      </div>
+      <div class="edit-form" id="debt-add-form">
+        <div class="form-row">
+          <div class="fg"><label>Name</label><input id="da-name" placeholder="e.g. TD Visa"/></div>
+          <div class="fg"><label>Category</label><select id="da-cat"><option>Credit Cards</option><option>Loans & LOC</option><option>Car Loans</option></select></div>
+          <div class="fg"><label>Type</label><select id="da-type"><option value="credit">Credit Card</option><option value="loan">Loan/LOC</option><option value="car">Car Loan</option></select></div>
+          <div class="fg"><label>Balance ($)</label><input id="da-amount" type="number" step="0.01" placeholder="0.00"/></div>
+        </div>
+        <div class="form-actions">
+          <button class="btn-sm btn-save" onclick="saveDebt()">Save</button>
+          <button class="btn-sm btn-cancel" onclick="cancelDebt()">Cancel</button>
+        </div>
+      </div>
+      <div id="debt-list"></div>
+    </div>
+    <div class="section">
+      <div class="sec-head"><h2>Year-End Debt History</h2></div>
+      <div class="chart-wrap"><canvas id="debt-chart"></canvas></div>
+    </div>
+    <div class="section">
+      <div class="sec-head">
+        <h2>📅 Payoff Projections</h2>
+        <span style="font-size:11px;color:#64748b">Updates live when you edit tracker balances</span>
+      </div>
+      <div id="payoff-summary" class="payoff-summary"></div>
+
+      <!-- Variable debts (credit cards + LOC) -->
+      <div class="payoff-sub-head">
+        <h3>💳 Credit Cards &amp; Lines of Credit</h3>
+        <span>Edit payment &amp; APR to recalculate</span>
+      </div>
+      <div id="payoff-variable" class="payoff-grid"></div>
+
+      <!-- Fixed payment loans (known end dates) -->
+      <div class="payoff-sub-head">
+        <h3>🚗 Fixed Payment Loans</h3>
+        <span>Structured loans with confirmed payoff dates</span>
+      </div>
+      <div id="payoff-fixed" class="payoff-grid"></div>
+
+      <!-- Custom / additional loans -->
+      <div class="payoff-sub-head">
+        <h3>📋 Additional Loans</h3>
+        <button class="btn-add" style="font-size:11px;padding:4px 12px" onclick="showAddCustomLoan()">+ Add Loan</button>
+      </div>
+      <div class="edit-form" id="custom-loan-form">
+        <div class="form-row">
+          <div class="fg"><label>Name</label><input id="cl-name" placeholder="e.g. Personal Loan"/></div>
+          <div class="fg"><label>Current Balance ($)</label><input id="cl-balance" type="number" step="0.01" placeholder="0.00"/></div>
+          <div class="fg"><label>Monthly Payment ($)</label><input id="cl-payment" type="number" step="0.01" placeholder="0.00"/></div>
+          <div class="fg"><label>APR (%)</label><input id="cl-apr" type="number" step="0.01" placeholder="0 = none"/></div>
+          <div class="fg"><label>Fixed End Date (optional)</label><input id="cl-date" type="month" /></div>
+        </div>
+        <div class="form-actions">
+          <button class="btn-sm btn-save" onclick="saveCustomLoan()">Save</button>
+          <button class="btn-sm btn-cancel" onclick="cancelCustomLoan()">Cancel</button>
+        </div>
+      </div>
+      <div id="payoff-custom" class="payoff-grid"></div>
+    </div>
+  </div>
+
+  <!-- ── MONTHLY TRACKER ── -->
+  <div id="tab-tracker" class="tab-content">
+    <div class="year-tabs" id="year-tabs"></div>
+    <div id="goal-widget-wrap"></div>
+
+    <!-- Debt Payments -->
+    <div class="section">
+      <div class="sec-head"><h2>💳 Monthly Debt Payments</h2><span style="font-size:11px;color:#64748b">Click any cell to edit</span></div>
+      <div class="tracker-wrap"><table class="tracker-table" id="tbl-debt-pay"></table></div>
+    </div>
+
+    <!-- Debt Balances (What You Owe) -->
+    <div class="section">
+      <div class="sec-head"><h2>📉 Monthly Debt Balances <span style="font-size:11px;color:#64748b;font-weight:400">— what you owe end of each month</span></h2><span style="font-size:11px;color:#64748b">Click any cell to edit</span></div>
+      <div class="tracker-wrap"><table class="tracker-table" id="tbl-debt-bal"></table></div>
+    </div>
+
+    <!-- Investments -->
+    <div class="section">
+      <div class="sec-head"><h2>📊 Investment Contributions</h2></div>
+      <div class="tracker-wrap"><table class="tracker-table" id="tbl-invest"></table></div>
+    </div>
+
+    <!-- Income & Cashflow -->
+    <div class="section">
+      <div class="sec-head"><h2>💵 Income, Cashflow & Savings</h2></div>
+      <div class="tracker-wrap"><table class="tracker-table" id="tbl-income"></table></div>
+    </div>
+  </div>
+
+  <!-- ── FIXED BILLS ── -->
+  <div id="tab-bills" class="tab-content">
+    <div class="section">
+      <div class="sec-head"><h2>Monthly Fixed Bills</h2><button class="btn-add" onclick="addBill()">+ Add</button></div>
+      <div class="edit-form" id="bill-add-form">
+        <div class="form-row">
+          <div class="fg"><label>Name</label><input id="ba-name" placeholder="e.g. Netflix"/></div>
+          <div class="fg"><label>Category</label><select id="ba-cat"><option>Housing</option><option>Car</option><option>Insurance</option><option>Utilities</option><option>Health</option><option>Subscriptions</option><option>Other</option></select></div>
+          <div class="fg"><label>Amount ($/mo)</label><input id="ba-amount" type="number" step="0.01" placeholder="0.00"/></div>
+          <div class="fg"><label>Due Day</label><input id="ba-due" type="number" min="1" max="31" placeholder="1"/></div>
+        </div>
+        <div class="form-actions">
+          <button class="btn-sm btn-save" onclick="saveBill()">Save</button>
+          <button class="btn-sm btn-cancel" onclick="cancelBill()">Cancel</button>
+        </div>
+      </div>
+      <div id="bills-list"></div>
+    </div>
+  </div>
+
+  <!-- ── INCOME ── -->
+  <div id="tab-income" class="tab-content">
+    <div class="section">
+      <div class="sec-head"><h2>Income Sources</h2><button class="btn-add" onclick="addIncome()">+ Add</button></div>
+      <div class="edit-form" id="income-add-form">
+        <div class="form-row">
+          <div class="fg"><label>Name</label><input id="ia-name" placeholder="e.g. Side Income"/></div>
+          <div class="fg"><label>Monthly Amount ($)</label><input id="ia-amount" type="number" step="0.01" placeholder="0.00"/></div>
+          <div class="fg"><label>Frequency</label><select id="ia-freq"><option value="monthly">Monthly</option><option value="biweekly">Bi-Weekly</option><option value="annual">Annual</option></select></div>
+        </div>
+        <div class="form-actions">
+          <button class="btn-sm btn-save" onclick="saveIncome()">Save</button>
+          <button class="btn-sm btn-cancel" onclick="cancelIncome()">Cancel</button>
+        </div>
+      </div>
+      <div id="income-list"></div>
+    </div>
+  </div>
+
+  <!-- ── DIVIDENDS ── -->
+  <div id="tab-dividends" class="tab-content">
+    <div class="section">
+      <div class="sec-head"><h2>2026 Dividends <span id="div-2026-total" style="color:#4ade80;margin-left:8px"></span></h2><span style="font-size:11px;color:#64748b">Click month to edit</span></div>
+      <div class="month-grid" id="div-2026"></div>
+    </div>
+    <div class="section">
+      <div class="sec-head"><h2>2025 Dividends <span id="div-2025-total" style="color:#4ade80;margin-left:8px"></span></h2><span style="font-size:11px;color:#64748b">Click month to edit</span></div>
+      <div class="month-grid" id="div-2025"></div>
+    </div>
+    <div class="section">
+      <div class="sec-head"><h2>2024 Dividends <span id="div-2024-total" style="color:#4ade80;margin-left:8px"></span></h2><span style="font-size:11px;color:#64748b">Click month to edit</span></div>
+      <div class="month-grid" id="div-2024"></div>
+    </div>
+    <div class="section">
+      <div class="sec-head"><h2>Dividend Growth</h2></div>
+      <div class="chart-wrap"><canvas id="div-chart"></canvas></div>
+    </div>
+  </div>
+  <!-- ── PLAN TAB ── -->
+  <div id="tab-plan" class="tab-content">
+
+    <!-- Next Paydays -->
+    <div class="section">
+      <div class="sec-head">
+        <h2>📅 Next Paydays</h2>
+        <span style="font-size:11px;color:#64748b">Showing next 4 paychecks from today</span>
+      </div>
+      <div id="next-payday-cards" class="payday-grid"></div>
+    </div>
+
+    <!-- 8-Paycheck Schedule (~6 weeks) -->
+    <div class="section">
+      <div class="sec-head">
+        <h2>📋 8-Paycheck Rollup <span style="font-size:11px;color:#64748b;font-weight:400">— next ~6 weeks</span></h2>
+        <span style="font-size:11px;color:#64748b">Bills ÷ 4 · $1,336/mo debt attack</span>
+      </div>
+      <div class="sched-wrap">
+        <table class="sched-table" id="paycheck-schedule"></table>
+      </div>
+    </div>
+
+    <!-- Net Worth / Debt Payoff Projection -->
+    <div class="section">
+      <div class="sec-head">
+        <h2>📈 Debt &amp; Net Worth Projection</h2>
+        <span style="font-size:11px;color:#64748b">Based on current payoff schedule · 7-year view</span>
+      </div>
+      <div id="projection-milestones" class="milestone-row"></div>
+      <div class="chart-wrap-xl"><canvas id="projection-chart"></canvas></div>
+      <div style="font-size:11px;color:#475569;margin-top:10px;text-align:center">
+        📌 Assumes $1,336/mo variable debt attack · $500/mo investments · 6% annual growth · Fixed loans at contract end dates
+      </div>
+    </div>
+
+  </div>
+
+</main>
+
+<div id="save-bar">
+  <p>⚠️ Unsaved changes</p>
+  <div class="bar-btns">
+    <button class="btn-sm btn-cancel" onclick="discard()">Discard</button>
+    <button class="btn-sm btn-save" id="save-btn" onclick="saveAll()" style="padding:7px 18px;font-size:13px">💾 Save Changes</button>
+  </div>
+</div>
+
+<script>
+const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+const fmt     = n => new Intl.NumberFormat('en-CA',{style:'currency',currency:'CAD',maximumFractionDigits:0}).format(n);
+const fmtF    = n => new Intl.NumberFormat('en-CA',{style:'currency',currency:'CAD',minimumFractionDigits:2,maximumFractionDigits:2}).format(n);
+
+let D = null, ORIG = null, dirty = false;
+let activeYear = '2026';
+let debtChart = null, divChart = null, annIncChart = null, annDebtChart = null, annDivChart = null, projectionChart = null;
+
+// ── Row definitions ──────────────────────────────────────────────────────────
+const DEBT_PAY_ROWS = [
+  {id:'amex-primary',   label:'American Express'},
+  {id:'amex-joint',     label:'American Express (Joint)'},
+  {id:'pc-financial',   label:'Presidents Choice'},
+  {id:'td-visa-1548',   label:'TD Visa (1548)'},
+  {id:'td-visa-1354',   label:'TD Visa (1354)'},
+  {id:'bmo-cc',         label:'BMO Credit Card'},
+  {id:'loc',            label:'Line of Credit (LOC)'},
+  {id:'fabs-loc',       label:"Fab's LOC"},
+  {id:'osap',           label:'OSAP'},
+  {id:'fabs-osap',      label:"Fab's OSAP"},
+  {id:'g70',            label:'Genesis G70'},
+  {id:'tucson',         label:'Hyundai Tucson'},
+  {id:'lowes',          label:'Lowes / Fridge'},
+  {id:'paybright',      label:'Paybright (Phones)'},
+  {id:'affirm',         label:'Affirm (TV/Desk)'},
+  {id:'canadian-tire',  label:'Canadian Tire'},
+];
+const DEBT_BAL_ROWS = [
+  {id:'amex-primary',   label:'American Express'},
+  {id:'amex-joint',     label:'American Express (Joint)'},
+  {id:'pc-financial',   label:'Presidents Choice'},
+  {id:'td-visa-1548',   label:'TD Visa (1548)'},
+  {id:'td-visa-1354',   label:'TD Visa (1354)'},
+  {id:'bmo-cc',         label:'BMO Credit Card'},
+  {id:'loc',            label:'Line of Credit (LOC)'},
+  {id:'fabs-loc',       label:"Fab's LOC"},
+  {id:'osap',           label:'OSAP'},
+  {id:'fabs-osap',      label:"Fab's OSAP"},
+  {id:'g70',            label:'Genesis G70'},
+  {id:'tucson',         label:'Hyundai Tucson'},
+  {id:'lowes',          label:'Lowes / Fridge'},
+  {id:'paybright',      label:'Paybright (Phones)'},
+  {id:'affirm',         label:'Affirm (TV/Desk)'},
+  {id:'canadian-tire',  label:'Canadian Tire'},
+];
+const INV_ROWS = [
+  {id:'rrsp',      label:'RRSP'},
+  {id:'crypto',    label:'Crypto'},
+  {id:'fhsa',      label:'FHSA'},
+  {id:'tfsa',      label:'TFSA'},
+  {id:'cash',      label:'Cash'},
+  {id:'fabs-tfsa', label:"Fab's TFSA"},
+  {id:'fabs-fhsa', label:"Fab's FHSA"},
+  {id:'fabs-cash', label:"Fab's Cash"},
+];
+const INC_ROWS = [
+  {id:'nafi',            label:'Nafi Income'},
+  {id:'fab',             label:"Fab's Income"},
+  {id:'tax-return',      label:'Tax Return'},
+  {id:'fabs-tax-return', label:"Fab's Tax Return"},
+  {id:'expenses',        label:'Expense Reimbursements'},
+];
+
+// Dynamic debt rows — derived live from D.debt_items so add/delete/rename
+// in the Debt tab instantly reflects in the Monthly Tracker tables.
+// Falls back to the static arrays on first load before D is available.
+function getDebtRows() {
+  if (!D || !D.debt_items || !D.debt_items.length) return DEBT_PAY_ROWS;
+  return D.debt_items.map(d => ({ id: d.id, label: d.name }));
+}
+
+// ── Cloud Storage (GitHub Gist) ───────────────────────────────────────────────
+const CLOUD_TOKEN_KEY = 'bills_gh_token';
+const CLOUD_GIST_KEY  = 'bills_gh_gist';
+
+function getCloudCreds() {
+  const token  = localStorage.getItem(CLOUD_TOKEN_KEY);
+  const gistId = localStorage.getItem(CLOUD_GIST_KEY);
+  return (token && gistId) ? { token, gistId } : null;
+}
+
+async function ghGistLoad(token, gistId) {
+  const r = await fetch(`https://api.github.com/gists/${gistId}`, {
+    headers: { Authorization: `Bearer ${token}`, Accept: 'application/vnd.github+json', 'X-GitHub-Api-Version': '2022-11-28' }
+  });
+  if (!r.ok) throw new Error(`Gist fetch failed (${r.status})`);
+  const g = await r.json();
+  const content = g.files?.['bills.json']?.content;
+  if (!content) throw new Error('bills.json not found in Gist');
+  return JSON.parse(content);
+}
+
+async function ghGistSave(token, gistId, data) {
+  const r = await fetch(`https://api.github.com/gists/${gistId}`, {
+    method: 'PATCH',
+    headers: { Authorization: `Bearer ${token}`, Accept: 'application/vnd.github+json', 'X-GitHub-Api-Version': '2022-11-28', 'Content-Type': 'application/json' },
+    body: JSON.stringify({ files: { 'bills.json': { content: JSON.stringify(data, null, 2) } } })
+  });
+  if (!r.ok) throw new Error(`Gist save failed (${r.status})`);
+  return r.json();
+}
+
+function showCloudModal() {
+  const creds = getCloudCreds();
+  if (creds) {
+    document.getElementById('cloud-token').value = creds.token;
+    document.getElementById('cloud-gist').value  = creds.gistId;
+    document.getElementById('cloud-status').textContent  = '✅ Connected';
+    document.getElementById('cloud-status').className    = 'cloud-status connected';
+  } else {
+    document.getElementById('cloud-token').value = '';
+    document.getElementById('cloud-gist').value  = '';
+    document.getElementById('cloud-status').textContent  = '⚠️ Not connected — enter credentials below';
+    document.getElementById('cloud-status').className    = 'cloud-status disconnected';
+  }
+  document.getElementById('cloud-modal').classList.add('open');
+}
+
+function hideCloudModal() {
+  document.getElementById('cloud-modal').classList.remove('open');
+}
+
+async function cloudConnect() {
+  const token  = document.getElementById('cloud-token').value.trim();
+  const gistId = document.getElementById('cloud-gist').value.trim();
+  if (!token || !gistId) { toast('❌ Enter both token and Gist ID'); return; }
+  try {
+    const data = await ghGistLoad(token, gistId);
+    localStorage.setItem(CLOUD_TOKEN_KEY, token);
+    localStorage.setItem(CLOUD_GIST_KEY, gistId);
+    document.getElementById('cloud-status').textContent = '✅ Connected';
+    document.getElementById('cloud-status').className   = 'cloud-status connected';
+    document.getElementById('cloud-btn').classList.add('connected');
+    hideCloudModal();
+    toast('☁️ Connected! Loading cloud data…');
+    D    = data;
+    ORIG = JSON.parse(JSON.stringify(D));
+    if (D.last_updated) document.getElementById('last-saved').textContent = 'Last saved: ' + new Date(D.last_updated).toLocaleString();
+    renderAll();
+  } catch(e) { toast('❌ ' + e.message); }
+}
+
+function cloudDisconnect() {
+  localStorage.removeItem(CLOUD_TOKEN_KEY);
+  localStorage.removeItem(CLOUD_GIST_KEY);
+  document.getElementById('cloud-btn').classList.remove('connected');
+  toast('☁️ Disconnected from cloud');
+  hideCloudModal();
+}
+
+// ── Load ─────────────────────────────────────────────────────────────────────
+async function load() {
+  const creds = getCloudCreds();
+  if (creds) {
+    try {
+      D = await ghGistLoad(creds.token, creds.gistId);
+      document.getElementById('cloud-btn').classList.add('connected');
+    } catch(e) {
+      toast('☁️ Cloud load failed: ' + e.message);
+      D = null;
+    }
+  }
+  if (!D) {
+    try {
+      const res = await fetch('bills-data.php');
+      D = await res.json();
+    } catch(e) {
+      D = { bills:[], income:[], debt_items:[], dividends:{}, monthly_tracker:{}, last_updated: new Date().toISOString() };
+    }
+  }
+  ORIG = JSON.parse(JSON.stringify(D));
+  if (D.last_updated) document.getElementById('last-saved').textContent = 'Last saved: ' + new Date(D.last_updated).toLocaleString();
+  renderAll();
+}
+
+function renderAll() {
+  renderSummary();
+  renderAnnualSummary();
+  renderDebtList();
+  renderDebtChart();
+  renderBillsList();
+  renderIncomeList();
+  renderDividends();
+  renderDivChart();
+  renderYearTabs();
+  renderTracker(activeYear);
+  renderPayoffProjections();
+  renderPlanTab();
+}
+
+// ── Top Summary Cards ─────────────────────────────────────────────────────────
+function renderSummary() {
+  const td = D.debt_items.reduce((s,d)=>s+d.amount,0);
+  const tb = D.monthly_bills.reduce((s,b)=>s+b.amount,0);
+  const ti = D.income.reduce((s,i)=>s+i.amount,0);
+  const cf = ti - tb;
+  const dy26 = (D.dividends?.['2026']||[]).reduce((s,v)=>s+v,0);
+  const dy25 = (D.dividends?.['2025']||[]).reduce((s,v)=>s+v,0);
+  // Investment goal progress
+  const goal = D.investment_goal?.amount || 35000;
+  const yr   = D.investment_goal?.year || '2026';
+  const inv26 = getYearTotalInv(yr);
+  const goalPct = Math.min(100, (inv26/goal*100)).toFixed(0);
+  document.getElementById('summary').innerHTML = `
+    <div class="sum-card"><div class="l">Total Debt</div><div class="v red">${fmt(td)}</div><div class="s">${D.debt_items.length} items</div></div>
+    <div class="sum-card"><div class="l">Monthly Bills</div><div class="v yellow">${fmt(tb)}</div><div class="s">${D.monthly_bills.length} fixed</div></div>
+    <div class="sum-card"><div class="l">Monthly Income</div><div class="v green">${fmt(ti)}</div><div class="s">${D.income.length} sources</div></div>
+    <div class="sum-card"><div class="l">Cashflow</div><div class="v ${cf>=0?'green':'red'}">${fmt(cf)}</div><div class="s">after fixed bills</div></div>
+    <div class="sum-card"><div class="l">2026 Divs YTD</div><div class="v blue">${fmtF(dy26)}</div><div class="s">2025: ${fmtF(dy25)}</div></div>
+    <div class="sum-card"><div class="l">Invest Goal ${yr}</div><div class="v cyan">${goalPct}%</div><div class="s">${fmt(inv26)} of ${fmt(goal)}</div></div>`;
+}
+
+function getYearTotalInv(yr) {
+  const yt = ((D.monthly_tracker||{})[yr]||{}).investments || {};
+  return Object.values(yt).reduce((s,arr)=>s+arr.reduce((a,v)=>a+(v>0?v:0),0),0);
+}
+
+// ── ANNUAL SUMMARY ────────────────────────────────────────────────────────────
+function renderAnnualSummary() {
+  const ann = D.annual_summary || {};
+  const years = Object.keys(ann).sort();
+  const currentYear = new Date().getFullYear().toString();
+
+  let html = `<thead><tr>
+    <th>Year</th>
+    <th>Bills Paid</th>
+    <th>Income</th>
+    <th>Dividends</th>
+    <th>Year-End Debt</th>
+    <th>Debt / Income %</th>
+  </tr></thead><tbody>`;
+
+  for (const yr of years) {
+    const row = ann[yr];
+    const isCurrent = (yr === currentYear);
+    const ratio = row.income > 0 ? (row.year_end_debt / row.income * 100).toFixed(0) : '—';
+    // Dividends: always live from D.dividends tab data
+    const liveDivs = (D.dividends?.[yr] || []).reduce((s,v) => s+(v||0), 0);
+    html += `<tr class="${isCurrent?'ann-current':''}">
+      <td>${yr}${isCurrent?' <span style="font-size:10px;color:#5865f2">← current</span>':''}</td>
+      ${annCell(yr,'bills_paid',row.bills_paid,'orange-v')}
+      ${annCell(yr,'income',row.income,'positive')}
+      <td><div class="ann-cell blue-v" title="Auto-calculated from Dividends tab">${liveDivs>0?fmtF(liveDivs):'—'}</div></td>
+      ${annCell(yr,'year_end_debt',row.year_end_debt,'red-v')}
+      <td><div class="ann-cell" style="color:${parseFloat(ratio)>100?'#f87171':parseFloat(ratio)>50?'#fb923c':'#4ade80'}">${ratio !== '—' ? ratio+'%' : '—'}</div></td>
+    </tr>`;
+  }
+  html += '</tbody>';
+  document.getElementById('ann-table').innerHTML = html;
+
+  renderAnnualCharts(ann, years);
+}
+
+function annCell(yr, field, val, cls) {
+  return `<td><div class="ann-cell ${cls}" onclick="editAnnCell('${yr}','${field}',this)">${val>0?fmtF(val):'—'}</div></td>`;
+}
+
+function editAnnCell(yr, field, el) {
+  const cur = D.annual_summary?.[yr]?.[field] || 0;
+  el.classList.add('editing');
+  el.innerHTML = `<input type="number" step="0.01" value="${cur}"
+    onblur="saveAnnCell('${yr}','${field}',this)"
+    onkeydown="if(event.key==='Enter')this.blur();if(event.key==='Escape'){this.parentElement.classList.remove('editing');renderAnnualSummary();}"
+    style="width:110px"/>`;
+  el.querySelector('input').focus();
+  el.querySelector('input').select();
+}
+
+function saveAnnCell(yr, field, inp) {
+  const val = parseFloat(inp.value) || 0;
+  if (!D.annual_summary) D.annual_summary = {};
+  if (!D.annual_summary[yr]) D.annual_summary[yr] = {};
+  D.annual_summary[yr][field] = val;
+  mark(); syncAllViews();
+}
+
+// ── Global View Sync ──────────────────────────────────────────────────────────
+// Re-renders every non-tracker panel so changes on any sheet appear everywhere
+function syncAllViews() {
+  // Always safe — these update HTML only, no Chart.js canvas required
+  renderSummary();
+  renderDebtList();
+  renderPayoffProjections();
+  // Chart-heavy renders: only run when that tab is currently visible
+  // (avoids Chart.js errors on hidden/zero-dimension canvases)
+  const activeId = document.querySelector('.tab-content.active')?.id || '';
+  if (activeId === 'tab-annual') renderAnnualSummary();
+  if (activeId === 'tab-plan')   renderPlanTab();
+}
+
+// Write a debt_items balance into the current month's tracker cell
+function syncDebtItemToTracker(id, amount) {
+  const yr = new Date().getFullYear().toString();
+  const mo = new Date().getMonth(); // 0-based
+  if (!D.monthly_tracker)                             D.monthly_tracker = {};
+  if (!D.monthly_tracker[yr])                         D.monthly_tracker[yr] = {};
+  if (!D.monthly_tracker[yr].debt_balances)           D.monthly_tracker[yr].debt_balances = {};
+  if (!D.monthly_tracker[yr].debt_balances[id])       D.monthly_tracker[yr].debt_balances[id] = Array(12).fill(0);
+  D.monthly_tracker[yr].debt_balances[id][mo] = amount;
+  // Refresh the tracker balance table only if we're viewing this year
+  if (activeYear === yr) buildBalancesTable('tbl-debt-bal', yr);
+}
+
+// Rebuild both tracker debt tables (payments + balances) with the current debt row list.
+// Called whenever a debt is added, renamed, or deleted so the tracker stays in sync.
+function rebuildTrackerDebtTables() {
+  buildPaymentsTable('tbl-debt-pay', activeYear);
+  buildBalancesTable('tbl-debt-bal', activeYear);
+}
+
+function renderAnnualCharts(ann, years) {
+  const bills  = years.map(y => ann[y].bills_paid || 0);
+  const income = years.map(y => ann[y].income || 0);
+  const divs   = years.map(y => ann[y].dividends || 0);
+  const debt   = years.map(y => ann[y].year_end_debt || 0);
+
+  if (annIncChart)  annIncChart.destroy();
+  if (annDebtChart) annDebtChart.destroy();
+  if (annDivChart)  annDivChart.destroy();
+
+  const opts = (extra={}) => ({
+    responsive: true, maintainAspectRatio: false,
+    plugins: { legend: { labels: { color:'#94a3b8', font:{size:11} } },
+               tooltip: { backgroundColor:'#1e2235', titleColor:'#94a3b8', bodyColor:'#e2e8f0',
+                          callbacks: { label: c => ' '+fmtF(c.raw) } } },
+    scales: { x: { ticks:{color:'#475569',font:{size:10}}, grid:{display:false} },
+              y: { ticks:{color:'#475569',callback:v=>fmt(v),font:{size:10}}, grid:{color:'#1e2235'} } },
+    ...extra
+  });
+
+  annIncChart = new Chart(document.getElementById('ann-income-chart').getContext('2d'),{
+    type:'bar', data:{ labels:years, datasets:[
+      { label:'Income', data:income, backgroundColor:'rgba(74,222,128,.4)', borderColor:'rgba(74,222,128,.8)', borderWidth:1, borderRadius:3 },
+      { label:'Bills Paid', data:bills, backgroundColor:'rgba(251,146,60,.4)', borderColor:'rgba(251,146,60,.8)', borderWidth:1, borderRadius:3 }
+    ]}, options: opts()
+  });
+
+  annDebtChart = new Chart(document.getElementById('ann-debt-chart').getContext('2d'),{
+    type:'line', data:{ labels:years, datasets:[
+      { label:'Year-End Debt', data:debt, borderColor:'rgba(248,113,113,.9)', backgroundColor:'rgba(248,113,113,.1)', borderWidth:2, fill:true, tension:.3, pointRadius:4, pointBackgroundColor:'#f87171' }
+    ]}, options: opts({ scales:{ x:{ticks:{color:'#475569',font:{size:10}},grid:{display:false}}, y:{ticks:{color:'#475569',callback:v=>fmt(v),font:{size:10}},grid:{color:'#1e2235'}} } })
+  });
+
+  annDivChart = new Chart(document.getElementById('ann-div-chart').getContext('2d'),{
+    type:'bar', data:{ labels:years, datasets:[
+      { label:'Dividends', data:divs, backgroundColor:'rgba(129,140,248,.5)', borderColor:'rgba(129,140,248,.9)', borderWidth:1, borderRadius:3 }
+    ]}, options: opts()
+  });
+}
+
+// ── DEBT BALANCES TAB ─────────────────────────────────────────────────────────
+function renderDebtList() {
+  const total = D.debt_items.reduce((s,d)=>s+d.amount,0);
+  const cats  = [...new Set(D.debt_items.map(d=>d.category))];
+  let   html  = '';
+  const barCls = {'Credit Cards':'red','Loans & LOC':'orange','Car Loans':'yellow'};
+  for (const cat of cats) {
+    const items    = D.debt_items.filter(d=>d.category===cat);
+    const catTotal = items.reduce((s,d)=>s+d.amount,0);
+    html += `<div class="cat-hdr"><span>${cat}</span><span style="color:#e2e8f0;font-weight:600">${fmt(catTotal)}</span></div>`;
+    for (const it of items) {
+      const pct = total > 0 ? (it.amount/total*100).toFixed(1) : '0.0';
+      const bc  = barCls[it.category]||'red';
+      html += `
+        <div class="item-row">
+          <div class="item-info">
+            <div class="item-name">${it.name}</div>
+            <div class="prog"><div class="prog-f ${bc}" style="width:${pct}%"></div></div>
+            <div class="item-sub">${pct}% of total debt</div>
+          </div>
+          <div class="item-amount red">${fmtF(it.amount)}</div>
+          <div class="item-actions">
+            <button class="btn-sm btn-edit" onclick="editDebt('${it.id}')">Edit</button>
+            <button class="btn-sm btn-del"  onclick="delDebt('${it.id}')">✕</button>
+          </div>
+        </div>
+        <div class="edit-form" id="de-${it.id}">
+          <div class="form-row">
+            <div class="fg"><label>Name</label><input id="den-${it.id}" value="${it.name}"/></div>
+            <div class="fg"><label>Category</label><select id="dec-${it.id}">
+              <option ${it.category==='Credit Cards'?'selected':''}>Credit Cards</option>
+              <option ${it.category==='Loans & LOC'?'selected':''}>Loans & LOC</option>
+              <option ${it.category==='Car Loans'?'selected':''}>Car Loans</option>
+            </select></div>
+            <div class="fg"><label>Type</label><select id="det-${it.id}">
+              <option value="credit" ${it.type==='credit'?'selected':''}>Credit Card</option>
+              <option value="loan"   ${it.type==='loan'?'selected':''}>Loan/LOC</option>
+              <option value="car"    ${it.type==='car'?'selected':''}>Car Loan</option>
+            </select></div>
+            <div class="fg"><label>Balance ($)</label><input type="number" step="0.01" id="dea-${it.id}" value="${it.amount}"/></div>
+          </div>
+          <div class="form-actions">
+            <button class="btn-sm btn-save" onclick="updateDebt('${it.id}')">Save</button>
+            <button class="btn-sm btn-cancel" onclick="closeDebt('${it.id}')">Cancel</button>
+          </div>
+        </div>`;
+    }
+  }
+  document.getElementById('debt-list').innerHTML = html;
+}
+function addDebt()   { document.getElementById('debt-add-form').classList.add('open'); document.getElementById('da-name').focus(); }
+function cancelDebt(){ document.getElementById('debt-add-form').classList.remove('open'); }
+function saveDebt()  {
+  const n=document.getElementById('da-name').value.trim();
+  if(!n) return;
+  D.debt_items.push({id:'d-'+Date.now(),name:n,category:document.getElementById('da-cat').value,type:document.getElementById('da-type').value,amount:parseFloat(document.getElementById('da-amount').value)||0});
+  rebuildTrackerDebtTables();
+  cancelDebt(); mark(); renderDebtList(); syncAllViews();
+}
+function editDebt(id)  { document.querySelectorAll('.edit-form').forEach(e=>e.classList.remove('open')); document.getElementById('de-'+id).classList.add('open'); }
+function closeDebt(id) { document.getElementById('de-'+id).classList.remove('open'); }
+function updateDebt(id){
+  const it=D.debt_items.find(d=>d.id===id);
+  it.name=document.getElementById('den-'+id).value;
+  it.category=document.getElementById('dec-'+id).value;
+  it.type=document.getElementById('det-'+id).value;
+  it.amount=parseFloat(document.getElementById('dea-'+id).value)||0;
+  // ← Debt Items → Tracker: write new balance to current month's cell + rebuild rows
+  syncDebtItemToTracker(id, it.amount);
+  rebuildTrackerDebtTables();
+  closeDebt(id); mark(); renderDebtChart(); syncAllViews();
+}
+function delDebt(id){
+  if(!confirm('Remove?')) return;
+  D.debt_items=D.debt_items.filter(d=>d.id!==id);
+  // Row disappears from Monthly Tracker immediately
+  rebuildTrackerDebtTables();
+  mark(); renderDebtChart(); syncAllViews();
+}
+function renderDebtChart(){
+  if(debtChart) debtChart.destroy();
+  const hist=[...(D.debt_history||[])];
+  const cur = D.debt_items.reduce((s,d)=>s+d.amount,0);
+  const labels=[...hist.map(d=>d.year),"Now"];
+  const vals  =[...hist.map(d=>d.amount), cur];
+  debtChart=new Chart(document.getElementById('debt-chart').getContext('2d'),{
+    type:'bar',data:{labels,datasets:[{label:'Debt',data:vals,
+      backgroundColor:vals.map((_,i)=>i===vals.length-1?'rgba(248,113,113,.9)':'rgba(248,113,113,.35)'),
+      borderColor:'rgba(248,113,113,.7)',borderWidth:1,borderRadius:4}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},
+      tooltip:{backgroundColor:'#1e2235',titleColor:'#94a3b8',bodyColor:'#e2e8f0',callbacks:{label:c=>' '+fmt(c.raw)}}},
+      scales:{x:{ticks:{color:'#475569',font:{size:10}},grid:{display:false}},
+              y:{ticks:{color:'#475569',callback:v=>fmt(v),font:{size:10}},grid:{color:'#1e2235'}}}}});
+}
+
+// ── MONTHLY TRACKER ───────────────────────────────────────────────────────────
+function renderYearTabs() {
+  const years = Object.keys(D.monthly_tracker||{}).sort().reverse();
+  document.getElementById('year-tabs').innerHTML = years.map(y=>
+    `<div class="year-tab ${y===activeYear?'active':''}" onclick="setYear('${y}')">${y}</div>`
+  ).join('');
+}
+function setYear(y) { activeYear=y; renderYearTabs(); renderTracker(y); }
+
+function renderTracker(year) {
+  // Investment goal widget (only for goal year)
+  const goalYear = D.investment_goal?.year || '2026';
+  const goalWrap = document.getElementById('goal-widget-wrap');
+  if (year === goalYear) {
+    const goal   = D.investment_goal?.amount || 35000;
+    const saved  = getYearTotalInv(year);
+    const pct    = Math.min(100, saved/goal*100);
+    const rem    = Math.max(0, goal - saved);
+    goalWrap.innerHTML = `
+      <div class="goal-widget">
+        <h3>🎯 ${year} Investment Goal</h3>
+        <div class="goal-amount">${fmt(saved)}</div>
+        <div class="goal-target">of ${fmt(goal)} target · ${rem>0?fmt(rem)+' remaining':'Goal reached! 🎉'}</div>
+        <div class="goal-bar-bg"><div class="goal-bar-fill" style="width:${pct}%"></div></div>
+        <div class="goal-meta"><span>${pct.toFixed(1)}% complete</span><span>${fmt(goal)}</span></div>
+      </div>`;
+  } else {
+    goalWrap.innerHTML = '';
+  }
+
+  buildPaymentsTable('tbl-debt-pay', year);
+  buildBalancesTable('tbl-debt-bal', year);
+  buildTable('tbl-invest', year, 'investments', INV_ROWS, 'blue-v');
+  buildIncomeTable('tbl-income', year);
+}
+
+// Debt Payments table — rows are driven live from D.debt_items
+function buildPaymentsTable(tableId, year) {
+  buildTable(tableId, year, 'debt_payments', getDebtRows(), 'orange-v');
+}
+
+// Debt Balances table — shows what is OWED each month
+function buildBalancesTable(tableId, year) {
+  const yt = ((D.monthly_tracker||{})[year]||{}).debt_balances || {};
+  let html = '<thead><tr><th>Debt</th>';
+  MONTHS.forEach(m => html += `<th>${m}</th>`);
+  html += '<th style="color:#f87171">Avg Balance</th></tr></thead><tbody>';
+
+  for (const row of getDebtRows()) {
+    const vals = yt[row.id] || Array(12).fill(0);
+    const nonzero = vals.filter(v=>v>0);
+    const avg = nonzero.length > 0 ? nonzero.reduce((s,v)=>s+v,0)/nonzero.length : 0;
+    html += `<tr><td>${row.label}</td>`;
+    vals.forEach((v, i) => {
+      const isPaidOff = v === 0;
+      html += `<td style="${isPaidOff?'background:rgba(74,222,128,.07)':''}"><div class="cell-wrap" id="cw-${tableId}-${row.id}-${i}">
+        <div class="cell-display ${isPaidOff?'positive':'red-v'}" onclick="editCell('${tableId}','${year}','debt_balances','${row.id}',${i})" title="${isPaidOff?'Paid off':''}">
+          ${isPaidOff?'✓ $0':fmtF(v)}
+        </div>
+        <input class="cell-input" type="number" step="0.01" id="ci-${tableId}-${row.id}-${i}" value="${v}"
+          onblur="saveCell('${tableId}','${year}','debt_balances','${row.id}',${i})"
+          onkeydown="if(event.key==='Enter')saveCell('${tableId}','${year}','debt_balances','${row.id}',${i});if(event.key==='Escape')cancelCell('${tableId}','${row.id}',${i},${v})"/>
+      </div></td>`;
+    });
+    html += `<td><div class="cell-display red-v" style="font-weight:600">${avg===0?'—':fmtF(avg)}</div></td></tr>`;
+  }
+
+  // Monthly total debt row
+  html += `<tr class="section-total"><td>📊 Total Debt Owed</td>`;
+  for (let i=0; i<12; i++) {
+    const colTotal = getDebtRows().reduce((s,row)=>{
+      return s + ((yt[row.id]||Array(12).fill(0))[i]||0);
+    },0);
+    html += `<td><div class="cell-display" style="color:#f87171;font-weight:700">${colTotal===0?'—':fmtF(colTotal)}</div></td>`;
+  }
+  const allVals = getDebtRows().map(r=>(yt[r.id]||Array(12).fill(0)));
+  const avgTotals = MONTHS.map((_,i)=>allVals.reduce((s,a)=>s+(a[i]||0),0)).filter(v=>v>0);
+  const overallAvg = avgTotals.length ? avgTotals.reduce((a,b)=>a+b,0)/avgTotals.length : 0;
+  html += `<td><div class="cell-display" style="color:#f87171;font-weight:700">${overallAvg===0?'—':fmtF(overallAvg)}</div></td></tr>`;
+
+  html += '</tbody>';
+  document.getElementById(tableId).innerHTML = html;
+}
+
+// Income table with Total, Total+Expense, Cashflow rows
+function buildIncomeTable(tableId, year) {
+  const yt = ((D.monthly_tracker||{})[year]||{});
+  const inc = yt.income || {};
+  const pay = yt.debt_payments || {};
+  const inv = yt.investments || {};
+
+  let html = '<thead><tr><th>Category</th>';
+  MONTHS.forEach(m => html += `<th>${m}</th>`);
+  html += '<th>Total</th></tr></thead><tbody>';
+
+  // Income rows
+  for (const row of INC_ROWS) {
+    const vals = inc[row.id] || Array(12).fill(0);
+    const total = vals.reduce((s,v)=>s+v,0);
+    html += `<tr><td>${row.label}</td>`;
+    vals.forEach((v, i) => {
+      html += `<td><div class="cell-wrap" id="cw-${tableId}-${row.id}-${i}">
+        <div class="cell-display ${v===0?'zero':'positive'}" onclick="editCell('${tableId}','${year}','income','${row.id}',${i})">${v===0?'—':fmtF(v)}</div>
+        <input class="cell-input" type="number" step="0.01" id="ci-${tableId}-${row.id}-${i}" value="${v}"
+          onblur="saveCell('${tableId}','${year}','income','${row.id}',${i})"
+          onkeydown="if(event.key==='Enter')saveCell('${tableId}','${year}','income','${row.id}',${i});if(event.key==='Escape')cancelCell('${tableId}','${row.id}',${i},${v})"/>
+      </div></td>`;
+    });
+    html += `<td><div class="cell-display ${total===0?'zero':'positive'}" style="font-weight:600">${total===0?'—':fmtF(total)}</div></td></tr>`;
+  }
+
+  // ── Calculated rows ──
+  const baseIds = ['nafi','fab','tax-return','fabs-tax-return'];
+  const expId   = 'expenses';
+
+  // Total Income (without expenses)
+  html += `<tr class="row-calc section-total"><td>Total Income</td>`;
+  let annualBase = 0;
+  for (let i=0; i<12; i++) {
+    const v = baseIds.reduce((s,id)=>s+((inc[id]||Array(12).fill(0))[i]||0),0);
+    annualBase += v;
+    html += `<td><div class="cell-display positive" style="font-weight:700">${v===0?'—':fmtF(v)}</div></td>`;
+  }
+  html += `<td><div class="cell-display positive" style="font-weight:700">${annualBase===0?'—':fmtF(annualBase)}</div></td></tr>`;
+
+  // Total Income + Expenses
+  html += `<tr class="row-calc"><td style="color:#22d3ee;font-size:12px;padding:8px 10px">Total with Expense</td>`;
+  let annualWithExp = 0;
+  for (let i=0; i<12; i++) {
+    const base = baseIds.reduce((s,id)=>s+((inc[id]||Array(12).fill(0))[i]||0),0);
+    const exp  = (inc[expId]||Array(12).fill(0))[i]||0;
+    const v = base + exp;
+    annualWithExp += v;
+    html += `<td><div class="cell-display cyan" style="font-weight:600">${v===0?'—':fmtF(v)}</div></td>`;
+  }
+  html += `<td><div class="cell-display cyan" style="font-weight:600">${annualWithExp===0?'—':fmtF(annualWithExp)}</div></td></tr>`;
+
+  // Total Debt Payments (reference)
+  html += `<tr class="row-calc"><td style="color:#fb923c;font-size:12px;padding:8px 10px">Total Payments Made</td>`;
+  let annualPay = 0;
+  for (let i=0; i<12; i++) {
+    const v = getDebtRows().reduce((s,row)=>s+((pay[row.id]||Array(12).fill(0))[i]||0),0);
+    annualPay += v;
+    html += `<td><div class="cell-display orange-v">${v===0?'—':fmtF(v)}</div></td>`;
+  }
+  html += `<td><div class="cell-display orange-v" style="font-weight:600">${annualPay===0?'—':fmtF(annualPay)}</div></td></tr>`;
+
+  // Total Investments
+  html += `<tr class="row-calc"><td style="color:#818cf8;font-size:12px;padding:8px 10px">Total Invested</td>`;
+  let annualInv = 0;
+  for (let i=0; i<12; i++) {
+    const v = INV_ROWS.reduce((s,row)=>s+((inv[row.id]||Array(12).fill(0))[i]||0),0);
+    annualInv += v;
+    html += `<td><div class="cell-display blue-v">${v===0?'—':fmtF(v)}</div></td>`;
+  }
+  html += `<td><div class="cell-display blue-v" style="font-weight:600">${annualInv===0?'—':fmtF(annualInv)}</div></td></tr>`;
+
+  // Net Cashflow = Total+Expense – Payments – Investments
+  html += `<tr class="row-cashflow"><td>💚 Net Cashflow</td>`;
+  let annualCF = 0;
+  for (let i=0; i<12; i++) {
+    const incV = baseIds.reduce((s,id)=>s+((inc[id]||Array(12).fill(0))[i]||0),0)
+               + ((inc[expId]||Array(12).fill(0))[i]||0);
+    const payV = getDebtRows().reduce((s,row)=>s+((pay[row.id]||Array(12).fill(0))[i]||0),0);
+    const invV = INV_ROWS.reduce((s,row)=>s+((inv[row.id]||Array(12).fill(0))[i]||0),0);
+    const cf   = incV - payV - invV;
+    annualCF  += cf;
+    html += `<td><div class="cell-display ${cf===0?'zero':cf>0?'positive':'negative'}" style="font-weight:600">${cf===0?'—':fmtF(cf)}</div></td>`;
+  }
+  html += `<td><div class="cell-display ${annualCF>0?'positive':'negative'}" style="font-weight:700">${fmtF(annualCF)}</div></td></tr>`;
+
+  html += '</tbody>';
+  document.getElementById(tableId).innerHTML = html;
+}
+
+// Generic table builder
+function buildTable(tableId, year, section, rows, colorClass) {
+  const yt = ((D.monthly_tracker||{})[year]||{})[section]||{};
+  let html = '<thead><tr><th>Category</th>';
+  MONTHS.forEach(m => html += `<th>${m}</th>`);
+  html += '<th>Total</th></tr></thead><tbody>';
+
+  for (const row of rows) {
+    const vals = yt[row.id] || Array(12).fill(0);
+    const total = vals.reduce((s,v)=>s+v,0);
+    html += `<tr><td>${row.label}</td>`;
+    vals.forEach((v, i) => {
+      const cls = v===0?'zero':v<0?'negative':colorClass;
+      html += `<td><div class="cell-wrap" id="cw-${tableId}-${row.id}-${i}">
+        <div class="cell-display ${cls}" onclick="editCell('${tableId}','${year}','${section}','${row.id}',${i})">${v===0?'—':fmtF(v)}</div>
+        <input class="cell-input" type="number" step="0.01" id="ci-${tableId}-${row.id}-${i}" value="${v}"
+          onblur="saveCell('${tableId}','${year}','${section}','${row.id}',${i})"
+          onkeydown="if(event.key==='Enter')saveCell('${tableId}','${year}','${section}','${row.id}',${i});if(event.key==='Escape')cancelCell('${tableId}','${row.id}',${i},${v})"/>
+      </div></td>`;
+    });
+    html += `<td><div class="cell-display ${total===0?'zero':total<0?'negative':colorClass}" style="font-weight:600">${total===0?'—':fmtF(total)}</div></td></tr>`;
+  }
+
+  // Totals row
+  html += `<tr class="section-total"><td>Total</td>`;
+  for (let i=0; i<12; i++) {
+    const colTotal = rows.reduce((s,row)=>{
+      return s + ((yt[row.id]||Array(12).fill(0))[i]||0);
+    },0);
+    html += `<td><div class="cell-display ${colTotal===0?'zero':colorClass}" style="font-weight:600">${colTotal===0?'—':fmtF(colTotal)}</div></td>`;
+  }
+  const grandTotal = rows.reduce((s,row)=>s+(yt[row.id]||Array(12).fill(0)).reduce((a,v)=>a+v,0),0);
+  html += `<td><div class="cell-display ${grandTotal===0?'zero':colorClass}" style="font-weight:700">${grandTotal===0?'—':fmtF(grandTotal)}</div></td></tr>`;
+
+  html += '</tbody>';
+  document.getElementById(tableId).innerHTML = html;
+}
+
+function editCell(tblId, year, section, rowId, idx) {
+  const cw = document.getElementById(`cw-${tblId}-${rowId}-${idx}`);
+  cw.classList.add('editing');
+  const inp = document.getElementById(`ci-${tblId}-${rowId}-${idx}`);
+  inp.focus(); inp.select();
+}
+function saveCell(tblId, year, section, rowId, idx) {
+  const val = parseFloat(document.getElementById(`ci-${tblId}-${rowId}-${idx}`).value)||0;
+  if (!D.monthly_tracker) D.monthly_tracker = {};
+  if (!D.monthly_tracker[year]) D.monthly_tracker[year] = {};
+  if (!D.monthly_tracker[year][section]) D.monthly_tracker[year][section] = {};
+  if (!D.monthly_tracker[year][section][rowId]) D.monthly_tracker[year][section][rowId] = Array(12).fill(0);
+  D.monthly_tracker[year][section][rowId][idx] = val;
+  document.getElementById(`cw-${tblId}-${rowId}-${idx}`).classList.remove('editing');
+  mark();
+  // Re-render the relevant tracker table
+  if      (section === 'debt_payments') buildPaymentsTable(tblId, year);
+  else if (section === 'debt_balances') {
+    buildBalancesTable(tblId, year);
+    // ← Tracker → Debt Items: sync the entered value immediately
+    const item = (D.debt_items||[]).find(d => d.id === rowId);
+    if (item) {
+      // If user entered a positive value, use it directly.
+      // If they cleared to 0, fall back to the most recent non-zero tracker entry.
+      item.amount = val > 0 ? val : getPayoffBalance(rowId);
+    }
+  }
+  else if (section === 'investments') buildTable(tblId, year, section, INV_ROWS, 'blue-v');
+  else if (section === 'income')      buildIncomeTable(tblId, year);
+  syncAllViews(); // propagate every change to Debt, Annual Summary, Plan, etc.
+}
+function cancelCell(tblId, rowId, idx, orig) {
+  document.getElementById(`ci-${tblId}-${rowId}-${idx}`).value = orig;
+  document.getElementById(`cw-${tblId}-${rowId}-${idx}`).classList.remove('editing');
+}
+
+// ── FIXED BILLS ───────────────────────────────────────────────────────────────
+function renderBillsList() {
+  const cats=[...new Set(D.monthly_bills.map(b=>b.category))];
+  let html='';
+  for (const cat of cats) {
+    const items=D.monthly_bills.filter(b=>b.category===cat);
+    const ct=items.reduce((s,b)=>s+b.amount,0);
+    html+=`<div class="cat-hdr"><span>${cat}</span><span style="color:#e2e8f0;font-weight:600">${fmt(ct)}/mo</span></div>`;
+    for (const it of items) {
+      html+=`<div class="item-row">
+        <div class="item-info"><div class="item-name">${it.name}</div><div class="item-sub">Due: ${it.due_day?'Every '+ord(it.due_day):'—'}</div></div>
+        <div class="item-amount yellow">${fmtF(it.amount)}<span style="font-size:10px;color:#64748b;font-weight:400">/mo</span></div>
+        <div class="item-actions">
+          <button class="btn-sm btn-edit" onclick="editBill('${it.id}')">Edit</button>
+          <button class="btn-sm btn-del"  onclick="delBill('${it.id}')">✕</button>
+        </div>
+      </div>
+      <div class="edit-form" id="be-${it.id}">
+        <div class="form-row">
+          <div class="fg"><label>Name</label><input id="bn-${it.id}" value="${it.name}"/></div>
+          <div class="fg"><label>Category</label><select id="bc-${it.id}">
+            <option ${it.category==='Housing'?'selected':''}>Housing</option><option ${it.category==='Car'?'selected':''}>Car</option>
+            <option ${it.category==='Insurance'?'selected':''}>Insurance</option><option ${it.category==='Utilities'?'selected':''}>Utilities</option>
+            <option ${it.category==='Health'?'selected':''}>Health</option><option ${it.category==='Subscriptions'?'selected':''}>Subscriptions</option>
+            <option ${it.category==='Other'?'selected':''}>Other</option>
+          </select></div>
+          <div class="fg"><label>Amount</label><input type="number" step="0.01" id="bam-${it.id}" value="${it.amount}"/></div>
+          <div class="fg"><label>Due Day</label><input type="number" min="1" max="31" id="bd-${it.id}" value="${it.due_day||''}"/></div>
+        </div>
+        <div class="form-actions">
+          <button class="btn-sm btn-save" onclick="updateBill('${it.id}')">Save</button>
+          <button class="btn-sm btn-cancel" onclick="closeBill('${it.id}')">Cancel</button>
+        </div>
+      </div>`;
+    }
+  }
+  document.getElementById('bills-list').innerHTML=html;
+}
+function addBill()   { document.getElementById('bill-add-form').classList.add('open'); document.getElementById('ba-name').focus(); }
+function cancelBill(){ document.getElementById('bill-add-form').classList.remove('open'); }
+function saveBill()  {
+  const n=document.getElementById('ba-name').value.trim(); if(!n) return;
+  D.monthly_bills.push({id:'b-'+Date.now(),name:n,category:document.getElementById('ba-cat').value,amount:parseFloat(document.getElementById('ba-amount').value)||0,due_day:parseInt(document.getElementById('ba-due').value)||1});
+  cancelBill(); mark(); renderBillsList(); syncAllViews();
+}
+function editBill(id)  { document.querySelectorAll('.edit-form').forEach(e=>e.classList.remove('open')); document.getElementById('be-'+id).classList.add('open'); }
+function closeBill(id) { document.getElementById('be-'+id).classList.remove('open'); }
+function updateBill(id){
+  const it=D.monthly_bills.find(b=>b.id===id);
+  it.name=document.getElementById('bn-'+id).value;
+  it.category=document.getElementById('bc-'+id).value;
+  it.amount=parseFloat(document.getElementById('bam-'+id).value)||0;
+  it.due_day=parseInt(document.getElementById('bd-'+id).value)||1;
+  closeBill(id); mark(); renderBillsList(); syncAllViews();
+}
+function delBill(id){
+  if(!confirm('Remove?')) return;
+  D.monthly_bills=D.monthly_bills.filter(b=>b.id!==id);
+  mark(); renderBillsList(); syncAllViews();
+}
+
+// ── INCOME ────────────────────────────────────────────────────────────────────
+function renderIncomeList() {
+  let html='';
+  for (const it of D.income) {
+    html+=`<div class="item-row">
+      <div class="item-info"><div class="item-name">${it.name}</div><div class="item-sub">${it.frequency}</div></div>
+      <div class="item-amount green">${fmtF(it.amount)}<span style="font-size:10px;color:#64748b;font-weight:400">/mo</span></div>
+      <div class="item-actions">
+        <button class="btn-sm btn-edit" onclick="editInc('${it.id}')">Edit</button>
+        <button class="btn-sm btn-del"  onclick="delInc('${it.id}')">✕</button>
+      </div>
+    </div>
+    <div class="edit-form" id="ie-${it.id}">
+      <div class="form-row">
+        <div class="fg"><label>Name</label><input id="in-${it.id}" value="${it.name}"/></div>
+        <div class="fg"><label>Amount</label><input type="number" step="0.01" id="ia2-${it.id}" value="${it.amount}"/></div>
+        <div class="fg"><label>Frequency</label><select id="if-${it.id}">
+          <option value="monthly"  ${it.frequency==='monthly'?'selected':''}>Monthly</option>
+          <option value="biweekly" ${it.frequency==='biweekly'?'selected':''}>Bi-Weekly</option>
+          <option value="annual"   ${it.frequency==='annual'?'selected':''}>Annual</option>
+        </select></div>
+      </div>
+      <div class="form-actions">
+        <button class="btn-sm btn-save" onclick="updateInc('${it.id}')">Save</button>
+        <button class="btn-sm btn-cancel" onclick="closeInc('${it.id}')">Cancel</button>
+      </div>
+    </div>`;
+  }
+  document.getElementById('income-list').innerHTML=html;
+}
+function addIncome()   { document.getElementById('income-add-form').classList.add('open'); document.getElementById('ia-name').focus(); }
+function cancelIncome(){ document.getElementById('income-add-form').classList.remove('open'); }
+function saveIncome()  {
+  const n=document.getElementById('ia-name').value.trim(); if(!n) return;
+  D.income.push({id:'i-'+Date.now(),name:n,amount:parseFloat(document.getElementById('ia-amount').value)||0,frequency:document.getElementById('ia-freq').value});
+  cancelIncome(); mark(); renderIncomeList(); syncAllViews();
+}
+function editInc(id)  { document.querySelectorAll('.edit-form').forEach(e=>e.classList.remove('open')); document.getElementById('ie-'+id).classList.add('open'); }
+function closeInc(id) { document.getElementById('ie-'+id).classList.remove('open'); }
+function updateInc(id){
+  const it=D.income.find(i=>i.id===id);
+  it.name=document.getElementById('in-'+id).value;
+  it.amount=parseFloat(document.getElementById('ia2-'+id).value)||0;
+  it.frequency=document.getElementById('if-'+id).value;
+  closeInc(id); mark(); renderIncomeList(); syncAllViews();
+}
+function delInc(id){
+  if(!confirm('Remove?')) return;
+  D.income=D.income.filter(i=>i.id!==id);
+  mark(); renderIncomeList(); syncAllViews();
+}
+
+// ── DIVIDENDS ─────────────────────────────────────────────────────────────────
+function renderDividends() {
+  ['2024','2025','2026'].forEach(yr=>{
+    const vals=D.dividends?.[yr]||Array(12).fill(0);
+    const total=vals.reduce((s,v)=>s+v,0);
+    const el = document.getElementById('div-'+yr+'-total');
+    if (el) el.textContent=fmtF(total);
+    const grid = document.getElementById('div-'+yr);
+    if (!grid) return;
+    grid.innerHTML=MONTHS.map((m,i)=>`
+      <div class="month-cell" id="mc-${yr}-${i}">
+        <div class="mc-m">${m}</div>
+        <div class="mc-v ${vals[i]===0?'zero':''}" onclick="editDiv('${yr}',${i})">${vals[i]>0?fmtF(vals[i]):'—'}</div>
+        <input type="number" step="0.01" value="${vals[i]}"
+          onblur="saveDiv('${yr}',${i})"
+          onkeydown="if(event.key==='Enter')saveDiv('${yr}',${i})"/>
+      </div>`).join('');
+  });
+}
+function editDiv(yr,i) {
+  const c=document.getElementById('mc-'+yr+'-'+i);
+  c.classList.add('editing');
+  c.querySelector('input').focus();
+}
+function saveDiv(yr,i) {
+  const c=document.getElementById('mc-'+yr+'-'+i);
+  const val=parseFloat(c.querySelector('input').value)||0;
+  if(!D.dividends) D.dividends={};
+  if(!D.dividends[yr]) D.dividends[yr]=Array(12).fill(0);
+  D.dividends[yr][i]=val;
+  c.classList.remove('editing');
+  mark(); renderDividends(); renderDivChart(); syncAllViews();
+}
+function renderDivChart() {
+  if(divChart) divChart.destroy();
+  divChart=new Chart(document.getElementById('div-chart').getContext('2d'),{
+    type:'bar',
+    data:{labels:MONTHS,datasets:[
+      {label:'2024',data:D.dividends?.['2024']||Array(12).fill(0),backgroundColor:'rgba(34,211,238,.25)',borderColor:'rgba(34,211,238,.6)',borderWidth:1,borderRadius:3},
+      {label:'2025',data:D.dividends?.['2025']||Array(12).fill(0),backgroundColor:'rgba(74,222,128,.35)',borderColor:'rgba(74,222,128,.7)',borderWidth:1,borderRadius:3},
+      {label:'2026',data:D.dividends?.['2026']||Array(12).fill(0),backgroundColor:'rgba(129,140,248,.6)',borderColor:'rgba(129,140,248,.9)',borderWidth:1,borderRadius:3}
+    ]},
+    options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{labels:{color:'#94a3b8',font:{size:11}}},tooltip:{backgroundColor:'#1e2235',titleColor:'#94a3b8',bodyColor:'#e2e8f0',callbacks:{label:c=>' $'+c.raw.toFixed(2)}}},
+      scales:{x:{ticks:{color:'#475569',font:{size:10}},grid:{display:false}},y:{ticks:{color:'#475569',callback:v=>'$'+v.toFixed(0),font:{size:10}},grid:{color:'#1e2235'}}}}});
+}
+
+// ── Tab ───────────────────────────────────────────────────────────────────────
+function switchTab(name, btn) {
+  document.querySelectorAll('.tab-content').forEach(e=>e.classList.remove('active'));
+  document.querySelectorAll('.page-tab').forEach(e=>e.classList.remove('active'));
+  document.getElementById('tab-'+name).classList.add('active');
+  btn.classList.add('active');
+  // Re-render each tab with latest in-memory data when you open it
+  if (name === 'annual')    renderAnnualSummary();
+  if (name === 'debt')      { renderDebtList(); renderDebtChart(); renderPayoffProjections(); }
+  if (name === 'tracker')   renderTracker(activeYear);
+  if (name === 'bills')     renderBillsList();
+  if (name === 'income')    renderIncomeList();
+  if (name === 'dividends') { renderDividends(); renderDivChart(); }
+  if (name === 'plan')      renderPlanTab();
+}
+
+// ── Save ──────────────────────────────────────────────────────────────────────
+function mark() { dirty=true; document.getElementById('save-bar').classList.add('visible'); }
+function discard() { D=JSON.parse(JSON.stringify(ORIG)); dirty=false; document.getElementById('save-bar').classList.remove('visible'); renderAll(); }
+async function saveAll() {
+  const btn = document.getElementById('save-btn');
+  btn.textContent='Saving…'; btn.disabled=true;
+  const creds = getCloudCreds();
+  try {
+    D.last_updated = new Date().toISOString();
+    if (creds) {
+      await ghGistSave(creds.token, creds.gistId, D);
+    } else {
+      const r = await fetch('bills-data.php', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(D)});
+      const j = await r.json();
+      if (j.error) throw new Error(j.error);
+      if (j.last_updated) D.last_updated = j.last_updated;
+    }
+    ORIG = JSON.parse(JSON.stringify(D)); dirty = false;
+    document.getElementById('save-bar').classList.remove('visible');
+    document.getElementById('last-saved').textContent = 'Last saved: ' + new Date(D.last_updated).toLocaleString();
+    // Signal the Dashboard (index.html) to reload bills data if it's open
+    try { localStorage.setItem('bills_updated', Date.now()); } catch(_) {}
+    toast('✅ Saved!');
+  } catch(e) { toast('❌ ' + e.message); }
+  finally { btn.textContent='💾 Save Changes'; btn.disabled=false; }
+}
+function toast(msg) {
+  const t=document.getElementById('toast'); t.textContent=msg; t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'),3000);
+}
+function ord(n){ const s=['th','st','nd','rd'],v=n%100; return n+(s[(v-20)%10]||s[v]||s[0]); }
+
+window.addEventListener('beforeunload',e=>{if(dirty){e.preventDefault();e.returnValue='';}});
+load();
+
+// ── Payoff Projections ────────────────────────────────────────────────────────
+// Debts excluded from projections (paid off / historical only)
+const PAYOFF_EXCLUDED = new Set(['lowes','paybright','affirm','canadian-tire']);
+// Fixed structured loans (known end dates from contracts)
+const FIXED_LOAN_IDS  = new Set(['g70','tucson','osap','fabs-osap']);
+
+const PAYOFF_DOT = {
+  'amex-primary':'#f87171','amex-joint':'#f87171','pc-financial':'#f87171',
+  'td-visa-1548':'#f87171','td-visa-1354':'#f87171','bmo-cc':'#f87171',
+  'loc':'#fb923c','fabs-loc':'#fb923c','fabs-osap':'#fb923c',
+  'g70':'#facc15','tucson':'#facc15','osap':'#818cf8'
+};
+
+function getPayoffBalance(id) {
+  const years = Object.keys(D.monthly_tracker || {}).sort().reverse();
+  for (const yr of years) {
+    const vals = ((D.monthly_tracker[yr] || {}).debt_balances || {})[id] || [];
+    for (let m = 11; m >= 0; m--) { if ((vals[m] || 0) > 0) return vals[m]; }
+  }
+  return 0;
+}
+function getPayoffOriginalBalance(id) {
+  let max = 0;
+  for (const yr of Object.keys(D.monthly_tracker || {})) {
+    const vals = ((D.monthly_tracker[yr] || {}).debt_balances || {})[id] || [];
+    for (const v of vals) { if ((v || 0) > max) max = v; }
+  }
+  return max;
+}
+function getAutoPayment(id) {
+  const years = Object.keys(D.monthly_tracker || {}).sort().reverse();
+  for (const yr of years) {
+    const vals = ((D.monthly_tracker[yr] || {}).debt_payments || {})[id] || [];
+    const nz = vals.filter(v => v > 0);
+    if (nz.length) return nz.reduce((a,b) => a+b, 0) / nz.length;
+  }
+  return 0;
+}
+function calcPayoff(balance, monthlyPay, apr) {
+  if (balance <= 0 || monthlyPay <= 0) return null;
+  if (apr > 0) {
+    const r = apr / 100 / 12;
+    if (monthlyPay <= balance * r) return null;
+    const months = Math.ceil(-Math.log(1 - (balance * r) / monthlyPay) / Math.log(1 + r));
+    return { months, totalInterest: Math.max(0, monthlyPay * months - balance) };
+  }
+  return { months: Math.ceil(balance / monthlyPay), totalInterest: 0 };
+}
+function payoffDateLabel(months) {
+  const d = new Date(); d.setMonth(d.getMonth() + months);
+  return d.toLocaleDateString('en-CA', { month: 'short', year: 'numeric' });
+}
+function monthsUntil(dateStr) {
+  // dateStr like '2030-09-17'
+  const target = new Date(dateStr);
+  const now = new Date();
+  return Math.max(0, Math.round((target - now) / (1000 * 60 * 60 * 24 * 30.44)));
+}
+function dateColor(months) {
+  if (months <= 12) return '#4ade80';
+  if (months <= 36) return '#facc15';
+  return '#fb923c';
+}
+
+function payoffCardHTML(id, label, balance, pay, auto, apr, orig, result, isFixed, extraBadge, onPayChange, onAprChange, extraRows) {
+  const dot = PAYOFF_DOT[id] || '#94a3b8';
+  const pct = orig > 0 ? Math.min(100, (1 - balance / orig) * 100) : 0;
+  const autoNote = !isFixed && (auto > 0)
+    ? `<span style="font-size:10px;color:#475569;margin-left:4px">${onPayChange ? 'avg' : ''}</span>` : '';
+
+  let dColor = '#475569', dLabel = '—', moreInfo = '';
+  if (isFixed && result) {
+    dColor = dateColor(result.months); dLabel = payoffDateLabel(result.months);
+    moreInfo = `<div class="payoff-row"><span class="payoff-lbl">Months Remaining</span><span class="payoff-val">${result.months} mo</span></div>`;
+  } else if (result) {
+    dColor = dateColor(result.months); dLabel = payoffDateLabel(result.months);
+    moreInfo = `<div class="payoff-row"><span class="payoff-lbl">Months Remaining</span><span class="payoff-val">${result.months} mo</span></div>`;
+    if (result.totalInterest > 0) moreInfo += `
+      <div class="payoff-row"><span class="payoff-lbl">Total Interest</span><span style="color:#f87171;font-weight:600">${fmtF(result.totalInterest)}</span></div>
+      <div class="payoff-row"><span class="payoff-lbl">Total Cost</span><span class="payoff-val">${fmtF(balance + result.totalInterest)}</span></div>`;
+  } else if (!result && pay > 0 && !isFixed) {
+    dColor = '#f87171'; dLabel = '⚠️ Never (raise payment)';
+  } else if (!isFixed) {
+    dColor = '#475569'; dLabel = 'Enter payment ↑';
+  }
+
+  const payRow = isFixed
+    ? `<div class="payoff-row"><span class="payoff-lbl">Payment${pay ? (pay < 1000 ? ' (biweekly)' : ' / mo') : ''}</span><span class="payoff-val">${pay ? fmtF(pay) : '—'}</span></div>`
+    : `<div class="payoff-row"><span class="payoff-lbl">Payment / mo${autoNote}</span>
+        <input class="payoff-input" type="number" step="0.01" value="${pay > 0 ? pay.toFixed(2) : ''}" placeholder="e.g. 500" onchange="${onPayChange}(this.value)"/></div>`;
+
+  const aprRow = isFixed ? '' :
+    `<div class="payoff-row"><span class="payoff-lbl">APR %</span>
+      <input class="payoff-input" type="number" step="0.01" min="0" max="99" value="${apr > 0 ? apr : ''}" placeholder="0 = none" onchange="${onAprChange}(this.value)"/></div>`;
+
+  return `
+  <div class="payoff-card${isFixed ? ' fixed-loan' : ''}">
+    <div class="payoff-card-title">
+      <span class="payoff-cat-dot" style="background:${dot}"></span>
+      ${label}${extraBadge || ''}
+    </div>
+    <div class="payoff-row"><span class="payoff-lbl">Balance</span><span style="color:#f87171;font-weight:700">${fmtF(balance)}</span></div>
+    ${payRow}${aprRow}
+    ${extraRows || ''}
+    <div class="payoff-date-row">
+      <span class="payoff-date-lbl">Payoff Date</span>
+      <span class="payoff-date-val" style="color:${dColor}">${dLabel}</span>
+    </div>
+    ${orig > 0 ? `<div class="payoff-bar-bg"><div class="payoff-bar-fill" style="width:${pct.toFixed(1)}%;background:${dot}"></div></div>
+    <div class="payoff-meta"><span>${pct.toFixed(0)}% paid off</span><span>${fmtF(balance)} left</span></div>` : ''}
+    ${moreInfo}
+  </div>`;
+}
+
+function renderPayoffProjections() {
+  if (!D) return;
+  const rates     = D.payoff_rates     || {};
+  const overrides = D.payoff_overrides || {};
+
+  // ── Variable debts ──────────────────────────────────────────────────────────
+  const varRows = getDebtRows().filter(r => !PAYOFF_EXCLUDED.has(r.id) && !FIXED_LOAN_IDS.has(r.id));
+  const varActive = [];
+  for (const row of varRows) {
+    const balance = getPayoffBalance(row.id);
+    if (balance <= 0) continue;
+    const auto   = getAutoPayment(row.id);
+    const pay    = overrides[row.id] != null ? overrides[row.id] : auto;
+    const apr    = parseFloat(rates[row.id] || 0);
+    const orig   = getPayoffOriginalBalance(row.id);
+    const result = calcPayoff(balance, pay, apr);
+    varActive.push({ id:row.id, label:row.label, balance, pay, auto, apr, orig, result });
+  }
+  varActive.sort((a,b) => b.balance - a.balance);
+
+  let varHtml = varActive.length === 0
+    ? '<p class="payoff-empty">🎉 No active credit card or LOC balances.</p>'
+    : varActive.map(d => payoffCardHTML(
+        d.id, d.label, d.balance, d.pay, d.auto, d.apr, d.orig, d.result, false, null,
+        `setPayoffOverride('${d.id}',`, `setPayoffRate('${d.id}',`, ''
+      )).join('');
+  document.getElementById('payoff-variable').innerHTML = varHtml;
+
+  // ── Fixed loans ─────────────────────────────────────────────────────────────
+  const fixedLoans = D.payoff_fixed_loans || [];
+  let fixHtml = '';
+  const fixedForSummary = [];
+  for (const loan of fixedLoans) {
+    const balance = getPayoffBalance(loan.id) || loan.current_balance || 0;
+    if (balance <= 0) continue;
+    const months  = monthsUntil(loan.payoff_date);
+    const orig    = getPayoffOriginalBalance(loan.id) || loan.orig_balance || 0;
+    const freq    = loan.frequency === 'biweekly' ? 'biweekly' : '/ mo';
+    const result  = months > 0 ? { months, totalInterest: 0 } : null;
+    fixedForSummary.push({ balance, months, pay: loan.payment });
+    fixHtml += payoffCardHTML(
+      loan.id, loan.name, balance, loan.payment, loan.payment, 0, orig, result, true,
+      `<span class="payoff-fixed-badge">FIXED</span>`, null, null,
+      `<div class="payoff-row"><span class="payoff-lbl">Frequency</span><span class="payoff-val">${loan.frequency}</span></div>
+       <div class="payoff-row"><span class="payoff-lbl">Contract End</span><span class="payoff-val">${new Date(loan.payoff_date).toLocaleDateString('en-CA',{month:'short',year:'numeric'})}</span></div>`
+    );
+  }
+  if (!fixHtml) fixHtml = '<p class="payoff-empty">No fixed loans configured.</p>';
+  document.getElementById('payoff-fixed').innerHTML = fixHtml;
+
+  // ── Custom loans ────────────────────────────────────────────────────────────
+  const customLoans = D.payoff_custom_loans || [];
+  let custHtml = '';
+  const custForSummary = [];
+  for (const loan of customLoans) {
+    const balance = loan.balance || 0;
+    if (balance <= 0) continue;
+    const apr    = parseFloat(loan.apr || 0);
+    const pay    = loan.payment || 0;
+    let result   = null;
+    if (loan.payoff_date) {
+      result = { months: monthsUntil(loan.payoff_date), totalInterest: 0 };
+    } else {
+      result = calcPayoff(balance, pay, apr);
+    }
+    custForSummary.push({ balance, pay, result });
+    custHtml += payoffCardHTML(
+      loan.id, loan.name, balance, pay, pay, apr, 0, result, !!loan.payoff_date,
+      `<button class="btn-sm btn-del" style="margin-left:auto;font-size:10px;padding:2px 7px" onclick="deleteCustomLoan('${loan.id}')">✕</button>`,
+      loan.payoff_date ? null : `updateCustomLoan('${loan.id}','payment',`,
+      loan.payoff_date ? null : `updateCustomLoan('${loan.id}','apr',`,
+      loan.payoff_date
+        ? `<div class="payoff-row"><span class="payoff-lbl">Contract End</span><span class="payoff-val">${new Date(loan.payoff_date+'-01').toLocaleDateString('en-CA',{month:'short',year:'numeric'})}</span></div>`
+        : ''
+    );
+  }
+  if (!custHtml) custHtml = '<p class="payoff-empty">No custom loans added yet.</p>';
+  document.getElementById('payoff-custom').innerHTML = custHtml;
+
+  // ── Summary bar ─────────────────────────────────────────────────────────────
+  const allActive = [
+    ...varActive,
+    ...fixedLoans.filter(l => getPayoffBalance(l.id) > 0).map(l => ({
+      balance: getPayoffBalance(l.id), pay: l.payment,
+      result: { months: monthsUntil(l.payoff_date), totalInterest: 0 }
+    })),
+    ...customLoans.filter(l => l.balance > 0).map(l => ({
+      balance: l.balance, pay: l.payment,
+      result: l.payoff_date ? { months: monthsUntil(l.payoff_date+'-01'), totalInterest:0 } : calcPayoff(l.balance,l.payment,l.apr||0)
+    }))
+  ];
+
+  if (allActive.length > 0) {
+    const totalDebt    = allActive.reduce((s,d) => s + d.balance, 0);
+    const totalMonthly = allActive.reduce((s,d) => s + (d.pay || 0), 0);
+    const totalInt     = allActive.reduce((s,d) => s + (d.result?.totalInterest || 0), 0);
+    const allMonths    = allActive.filter(d => d.result?.months > 0).map(d => d.result.months);
+    const maxMonths    = allMonths.length ? Math.max(...allMonths) : null;
+    const dfDate       = maxMonths != null ? payoffDateLabel(maxMonths) : '—';
+    document.getElementById('payoff-summary').innerHTML = `
+      <div class="payoff-sum-card"><div class="ps-l">Active Debts</div><div class="ps-v" style="color:#f87171">${allActive.length}</div></div>
+      <div class="payoff-sum-card"><div class="ps-l">Total Balance</div><div class="ps-v" style="color:#f87171">${fmtF(totalDebt)}</div></div>
+      <div class="payoff-sum-card"><div class="ps-l">Total / Month</div><div class="ps-v" style="color:#fb923c">${fmtF(totalMonthly)}</div></div>
+      <div class="payoff-sum-card"><div class="ps-l">Est. Interest</div><div class="ps-v" style="color:#facc15">${totalInt > 0 ? fmtF(totalInt) : '—'}</div></div>
+      <div class="payoff-sum-card"><div class="ps-l">Debt-Free Date</div><div class="ps-v" style="color:#4ade80">${dfDate}</div></div>`;
+  } else {
+    document.getElementById('payoff-summary').innerHTML = '';
+  }
+}
+
+function setPayoffRate(id, val) {
+  if (!D.payoff_rates) D.payoff_rates = {};
+  const n = parseFloat(val);
+  if (!isNaN(n) && n >= 0) D.payoff_rates[id] = n; else delete D.payoff_rates[id];
+  mark(); renderPayoffProjections();
+}
+function setPayoffOverride(id, val) {
+  if (!D.payoff_overrides) D.payoff_overrides = {};
+  const n = parseFloat(val);
+  if (!isNaN(n) && n > 0) D.payoff_overrides[id] = n; else delete D.payoff_overrides[id];
+  mark(); renderPayoffProjections();
+}
+
+// ── Custom Loan CRUD ──────────────────────────────────────────────────────────
+function showAddCustomLoan() {
+  document.getElementById('custom-loan-form').classList.add('open');
+  document.getElementById('cl-name').focus();
+}
+function cancelCustomLoan() {
+  document.getElementById('custom-loan-form').classList.remove('open');
+  ['cl-name','cl-balance','cl-payment','cl-apr','cl-date'].forEach(id => {
+    document.getElementById(id).value = '';
+  });
+}
+function saveCustomLoan() {
+  const name = document.getElementById('cl-name').value.trim();
+  if (!name) return;
+  if (!D.payoff_custom_loans) D.payoff_custom_loans = [];
+  D.payoff_custom_loans.push({
+    id:           'cl-' + Date.now(),
+    name:         name,
+    balance:      parseFloat(document.getElementById('cl-balance').value) || 0,
+    payment:      parseFloat(document.getElementById('cl-payment').value) || 0,
+    apr:          parseFloat(document.getElementById('cl-apr').value) || 0,
+    payoff_date:  document.getElementById('cl-date').value || null
+  });
+  cancelCustomLoan(); mark(); syncAllViews();
+}
+function deleteCustomLoan(id) {
+  if (!confirm('Remove this loan?')) return;
+  D.payoff_custom_loans = (D.payoff_custom_loans || []).filter(l => l.id !== id);
+  mark(); syncAllViews();
+}
+function updateCustomLoan(id, field, val) {
+  const loan = (D.payoff_custom_loans || []).find(l => l.id === id);
+  if (!loan) return;
+  loan[field] = parseFloat(val) || 0;
+  mark(); syncAllViews();
+}
+
+// ── PLAN TAB ─────────────────────────────────────────────────────────────────
+
+// Paycheck schedule sources — matches income sources (10th/24th = ASA, 15th/30th = KB)
+const PAY_SOURCES = [
+  { name:'ASA',        cls:'asa', days:[10,24] },
+  { name:'Kilobytes',  cls:'kb',  days:[15,30] },
+];
+
+// Build the biweekly take-home amounts from D.income (each job / 2 paychecks per month)
+function paySourceAmount(name) {
+  const src = D.income || [];
+  if (name === 'ASA') {
+    const nafi = src.find(i => i.id === 'nafi-income' || i.name.toLowerCase().includes('nafi'));
+    return nafi ? +(nafi.amount / 2).toFixed(2) : 2549.06;
+  }
+  if (name === 'Kilobytes') {
+    const fab = src.find(i => i.id === 'fab-income' || i.name.toLowerCase().includes('fab'));
+    return fab ? +(fab.amount / 2).toFixed(2) : 2573.19;
+  }
+  return 0;
+}
+
+// Return upcoming paycheck dates sorted asc, starting from tomorrow
+function getUpcomingPaychecks(n = 10) {
+  const today = new Date(); today.setHours(0,0,0,0);
+  const results = [];
+  // Search up to 5 months ahead
+  for (let mo = 0; mo < 5; mo++) {
+    const ref = new Date(today.getFullYear(), today.getMonth() + mo, 1);
+    const yr  = ref.getFullYear();
+    const mnth= ref.getMonth();
+    const dim = new Date(yr, mnth+1, 0).getDate();
+    for (const ps of PAY_SOURCES) {
+      for (const day of ps.days) {
+        const d = Math.min(day, dim);
+        const dt = new Date(yr, mnth, d);
+        if (dt > today) results.push({ date:dt, source:ps.name, cls:ps.cls, amount: paySourceAmount(ps.name) });
+      }
+    }
+  }
+  results.sort((a,b) => a.date - b.date);
+  return results.slice(0, n);
+}
+
+function daysUntil(dt) {
+  const today = new Date(); today.setHours(0,0,0,0);
+  return Math.round((dt - today) / 86400000);
+}
+
+function renderNextPayday() {
+  const checks  = getUpcomingPaychecks(4);
+  const allBills= (D.monthly_bills || []).reduce((s,b) => s+b.amount, 0);
+  // Roughly 4 pay events/month, split bills proportionally
+  const billsPerCheck = allBills / 4;
+  const debtPerMonth  = 1336;
+  const debtPerCheck  = debtPerMonth / 4;
+
+  let html = '';
+  checks.forEach((c, i) => {
+    const days = daysUntil(c.date);
+    const cdLabel = days === 0 ? 'Today!' : days === 1 ? 'Tomorrow' : `in ${days} days`;
+    const remain  = c.amount - billsPerCheck - debtPerCheck;
+    html += `
+    <div class="payday-card ${i===0?'next-pay':''}">
+      <div class="payday-hdr">
+        <span class="payday-source">${c.source}</span>
+        <span class="payday-countdown">${cdLabel}</span>
+      </div>
+      <div class="payday-date">${MONTHS[c.date.getMonth()]} ${c.date.getDate()}, ${c.date.getFullYear()}</div>
+      <div class="payday-gross">${fmtF(c.amount)}</div>
+      <div class="payday-alloc">
+        <div class="pa-row"><span class="pal">Fixed Bills (est.)</span><span class="pav red">${fmtF(billsPerCheck)}</span></div>
+        <div class="pa-row"><span class="pal">Debt Attack</span><span class="pav orange">${fmtF(debtPerCheck)}</span></div>
+        <div class="pa-row pa-total"><span class="pal">Remaining</span><span class="pav ${remain>=0?'green':'red'}">${fmtF(remain)}</span></div>
+      </div>
+    </div>`;
+  });
+  document.getElementById('next-payday-cards').innerHTML = html;
+}
+
+function renderPaycheckSchedule() {
+  const checks     = getUpcomingPaychecks(8);
+  const allBills   = (D.monthly_bills || []).reduce((s,b) => s+b.amount, 0);
+  const billsPerCk = allBills / 4;
+  const debtPerCk  = 1336 / 4;
+
+  let runningDebt = (D.debt_items||[]).reduce((s,d)=>s+d.amount,0);
+
+  let html = `<thead><tr>
+    <th>Paydate</th><th>Gross Pay</th><th>Fixed Bills</th><th>Debt Attack</th><th>Running Debt</th><th>Remaining</th>
+  </tr></thead><tbody>`;
+
+  for (const c of checks) {
+    const attack  = Math.min(debtPerCk, runningDebt);
+    runningDebt   = Math.max(0, runningDebt - attack);
+    const remain  = c.amount - billsPerCk - attack;
+    html += `<tr>
+      <td>
+        <div class="sched-date">${MONTHS[c.date.getMonth()]} ${c.date.getDate()}</div>
+        <div class="sched-yr">${c.date.getFullYear()}</div>
+        <span class="sched-badge ${c.cls}">${c.source}</span>
+      </td>
+      <td style="color:#4ade80;font-weight:600">${fmtF(c.amount)}</td>
+      <td style="color:#f87171">${fmtF(billsPerCk)}</td>
+      <td style="color:#fb923c">${fmtF(attack)}</td>
+      <td style="color:${runningDebt<30000?'#facc15':'#94a3b8'}">${fmtF(runningDebt)}</td>
+      <td style="color:${remain>=0?'#4ade80':'#f87171'};font-weight:600">${fmtF(remain)}</td>
+    </tr>`;
+  }
+  html += '</tbody>';
+  document.getElementById('paycheck-schedule').innerHTML = html;
+}
+
+// Net worth projection — 7-year view
+function renderNetWorthProjection() {
+  const today     = new Date();
+  const FIXED_IDS = new Set(['g70','tucson','osap','fabs-osap']);
+  const fixedLoans= D.payoff_fixed_loans || [];
+
+  // Seed current balances
+  const varDebtStart  = (D.debt_items||[]).filter(d => !FIXED_IDS.has(d.id)).reduce((s,d)=>s+d.amount,0);
+  const WS_START      = 17976;   // Wealthsimple portfolio (from last cache)
+  const MONTHLY_INV   = 500;     // estimated monthly investment contribution
+  const MONTHLY_DEBT  = 1336;    // variable debt attack per month
+  const GROWTH        = Math.pow(1.06, 1/12) - 1; // 6% annual → monthly
+
+  // Fixed loan current balances
+  const fixedBal = {};
+  for (const fl of fixedLoans) {
+    fixedBal[fl.id] = getPayoffBalance(fl.id) || 0;
+  }
+
+  const labels    = [];
+  const debtSer   = [];
+  const investSer = [];
+  const nwSer     = [];
+  // $100K milestone tracking
+  let hundredKMonth = null;
+  let debtFreeMonth = null;
+
+  let varDebt = varDebtStart;
+  let invest  = WS_START;
+
+  for (let i = 0; i <= 84; i++) {
+    const dt = new Date(today.getFullYear(), today.getMonth() + i, 1);
+
+    // Reduce variable debt
+    const varReduction = Math.min(MONTHLY_DEBT, varDebt);
+    varDebt = Math.max(0, varDebt - varReduction);
+
+    // Reduce each fixed loan toward 0 by its payoff date
+    let fixedTotal = 0;
+    for (const fl of fixedLoans) {
+      if (fixedBal[fl.id] > 0) {
+        const payoffDt = new Date(fl.payoff_date);
+        if (dt >= payoffDt) {
+          fixedBal[fl.id] = 0;
+        } else {
+          const mPay = fl.frequency === 'biweekly' ? fl.payment * 26 / 12 : fl.payment;
+          fixedBal[fl.id] = Math.max(0, fixedBal[fl.id] - mPay);
+        }
+      }
+      fixedTotal += fixedBal[fl.id];
+    }
+
+    const totalDebt = varDebt + fixedTotal;
+    invest = invest * (1 + GROWTH) + MONTHLY_INV;
+    const nw = invest - totalDebt;
+
+    if (hundredKMonth === null && nw >= 100000) hundredKMonth = i;
+    if (debtFreeMonth === null && totalDebt <= 0) debtFreeMonth = i;
+
+    // Quarterly labels for readability
+    if (i % 3 === 0) {
+      const qtr = Math.ceil((dt.getMonth()+1) / 3);
+      labels.push(dt.getFullYear() + ' Q' + qtr);
+      debtSer.push(+totalDebt.toFixed(0));
+      investSer.push(+invest.toFixed(0));
+      nwSer.push(+nw.toFixed(0));
+    }
+  }
+
+  // Helper: months → date string
+  function moToDate(mo) {
+    if (mo === null) return 'After 7 yrs';
+    const d = new Date(today.getFullYear(), today.getMonth() + mo, 1);
+    return MONTHS[d.getMonth()] + ' ' + d.getFullYear();
+  }
+
+  // Fixed-loan milestones
+  const g70PayoffDate  = (fixedLoans.find(l=>l.id==='g70')?.payoff_date)||'';
+  const tucsonDate     = (fixedLoans.find(l=>l.id==='tucson')?.payoff_date)||'';
+  const fabsOsapDate   = (fixedLoans.find(l=>l.id==='fabs-osap')?.payoff_date)||'';
+
+  const milestones = [
+    { l:'Variable Debt Free',   d: moToDate(debtFreeMonth),   n:'CC + LOC cleared',           c:'#4ade80' },
+    { l:'Cars Done',            d: tucsonDate ? new Date(tucsonDate).toLocaleDateString('en-CA',{month:'short',year:'numeric'}) : '—', n:'G70 + Tucson paid',  c:'#fb923c' },
+    { l:'$100K Net Worth',      d: moToDate(hundredKMonth),   n:'Investments − Debt ≥ $100K', c:'#818cf8' },
+    { l:'All Loans Done',       d: fabsOsapDate ? new Date(fabsOsapDate).toLocaleDateString('en-CA',{month:'short',year:'numeric'}) : '—', n:"Fab's OSAP final",  c:'#22d3ee' },
+  ];
+
+  document.getElementById('projection-milestones').innerHTML = milestones.map(m=>`
+    <div class="milestone-chip">
+      <div class="mc-l">${m.l}</div>
+      <div class="mc-d" style="color:${m.c}">${m.d}</div>
+      <div class="mc-n">${m.n}</div>
+    </div>`).join('');
+
+  if (projectionChart) projectionChart.destroy();
+  const ctx = document.getElementById('projection-chart').getContext('2d');
+  projectionChart = new Chart(ctx, {
+    type:'line',
+    data:{ labels, datasets:[
+      { label:'Total Debt',    data:debtSer,   borderColor:'#f87171', backgroundColor:'rgba(248,113,113,.07)', fill:true,  tension:.3, pointRadius:0, borderWidth:2 },
+      { label:'Investments',   data:investSer, borderColor:'#818cf8', backgroundColor:'transparent',           fill:false, tension:.3, pointRadius:0, borderWidth:2, borderDash:[5,3] },
+      { label:'Net Worth',     data:nwSer,     borderColor:'#4ade80', backgroundColor:'rgba(74,222,128,.06)',  fill:true,  tension:.3, pointRadius:0, borderWidth:2.5 },
+    ]},
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      interaction:{ mode:'index', intersect:false },
+      plugins:{
+        legend:{ labels:{ color:'#94a3b8', font:{size:12} } },
+        tooltip:{ backgroundColor:'#1e2235', titleColor:'#94a3b8', bodyColor:'#e2e8f0',
+                  callbacks:{ label: c => ' ' + fmtF(c.raw) } },
+        annotation: { annotations: {} }
+      },
+      scales:{
+        x:{ ticks:{ color:'#475569', font:{size:10}, maxRotation:45 }, grid:{ display:false } },
+        y:{ ticks:{ color:'#475569', callback:v=>fmt(v), font:{size:10} }, grid:{ color:'#1e2235' } }
+      }
+    }
+  });
+}
+
+function renderPlanTab() {
+  renderNextPayday();
+  renderPaycheckSchedule();
+  renderNetWorthProjection();
+}
+</script>
+</body>
+</html>
